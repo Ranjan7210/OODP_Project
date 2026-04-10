@@ -1,0 +1,5 @@
+id,name,routeNumber,startStop,endStop,totalDistance,stops
+1,Colaba-Dadar Express,R-101,Colaba Bus Station,Dadar TT Circle,12.40,Colaba Bus Station;Churchgate Terminal;Marine Drive;Mumbai Central;Dadar TT Circle
+2,Churchgate-Bandra Shuttle,R-204,Churchgate Terminal,Bandra Reclamation,15.80,Churchgate Terminal;Marine Drive;Mumbai Central;Dadar TT Circle;Bandra Reclamation
+3,South Mumbai-Andheri Route,R-412,Colaba Bus Station,Andheri Station East,24.60,Colaba Bus Station;Mumbai Central;Dadar TT Circle;Bandra Reclamation;Andheri Station East
+4,Western Express Link,R-505,Dadar TT Circle,Borivali Bus Depot,28.90,Dadar TT Circle;Bandra Reclamation;Andheri Station East;Borivali Bus Depot

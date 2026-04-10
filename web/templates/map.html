@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Live Map</h1>
+    <p class="page-subtitle">Real-time GPS tracking and route visualization</p>
+</div>
+
+{% if api_key == "YOUR_API_KEY_HERE" or not api_key %}
+<div class="warning-banner">
+    <strong><i class="bi bi-exclamation-triangle-fill"></i> Setup Required:</strong> 
+    Add your Google Maps API key in <code>app.py</code> to enable the interactive map.
+</div>
+{% endif %}
+
+<div class="map-layout">
+    <!-- Map Area -->
+    <div class="map-container-card">
+        <div class="map-controls-bar">
+            <div class="map-controls-group">
+                <button class="map-btn active" id="btn-toggle-routes"><i class="bi bi-share-fill"></i> Routes</button>
+                <button class="map-btn active" id="btn-toggle-stops"><i class="bi bi-geo-alt-fill"></i> Stops</button>
+                <button class="map-btn" id="btn-center-map"><i class="bi bi-crosshair"></i> Auto-Center</button>
+            </div>
+            <div class="map-controls-group">
+                <select class="map-select" id="route-filter">
+                    <option value="ALL">All Routes</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="google-map" class="google-map" style="min-height: 500px;">
+            <!-- Map renders here -->
+            <div class="empty-state" id="map-loading">
+                <div class="pulse-dot" style="margin: 0 auto 16px; width:16px; height: 16px;"></div>
+                <p>Initializing Map Engine...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="map-sidebar">
+        <div class="sidebar-header">
+            <h3><div class="pulse-dot"></div> Live Fleet</h3>
+        </div>
+        <div class="live-fleet-list" id="fleet-list">
+            <div style="padding: 24px; text-align:center; color: var(--text-muted); font-size: 13px;">
+                Scanning for active units...
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if api_key and api_key != "YOUR_API_KEY_HERE" %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ api_key }}&callback=initMap" async defer></script>
+{% endif %}
+
+<script>
+    // Map State
+    let map;
+    let stopMarkers = [];
+    let routePolylines = [];
+    let busMarkers = {}; // busNumber -> marker instance
+    
+    // Custom Map Style
+    const customMapStyle = [
+        { featureType: "all", elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+        { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+        { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+        { featureType: "water", elementType: "geometry", stylers: [{ color: "#C9E8F5" }] },
+        { featureType: "poi", elementType: "all", stylers: [{ visibility: "off" }] }
+    ];
+    
+    // Dark Map Style overrides
+    const darkMapStyle = [
+        { featureType: "all", elementType: "geometry", stylers: [{ color: "#0F172A" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#1E293B" }] },
+        { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#94A3B8" }] },
+        { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+        { featureType: "water", elementType: "geometry", stylers: [{ color: "#0B1120" }] },
+        { featureType: "poi", elementType: "all", stylers: [{ visibility: "off" }] },
+        { featureType: "all", elementType: "labels.text.fill", stylers: [{ color: "#CBD5E1" }] },
+        { featureType: "all", elementType: "labels.text.stroke", stylers: [{ color: "#0F172A" }] }
+    ];
+    
+    function getAppropriateMapStyle() {
+        return document.documentElement.getAttribute('data-theme') === 'dark' ? darkMapStyle : customMapStyle;
+    }
+
+    // Initialize Map
+    function initMap() {
+        document.getElementById('map-loading').style.display = 'none';
+        
+        map = new google.maps.Map(document.getElementById('google-map'), {
+            zoom: 12,
+            center: { lat: 19.0760, lng: 72.8777 }, // Mumbai Center
+            styles: getAppropriateMapStyle(),
+            disableDefaultUI: false,
+            zoomControl: true,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: true
+        });
+
+        // Load Initial Data
+        loadMapData();
+        
+        // Start Live Tracking
+        setInterval(fetchLiveBuses, 5000);
+    }
+
+    async function loadMapData() {
+        try {
+            // Fetch stops and routes
+            const [stopsRes, routesRes] = await Promise.all([
+                fetch('/api/stops'),
+                fetch('/api/routes-geo')
+            ]);
+            
+            const stops = await stopsRes.json();
+            const routes = await routesRes.json();
+            
+            plotStops(stops);
+            plotRoutes(routes);
+            populateRouteFilter(routes);
+            
+            // First live fetch
+            fetchLiveBuses();
+            
+        } catch (error) {
+            console.error("Error loading map data:", error);
+        }
+    }
+
+    function plotStops(stops) {
+        const infoWindow = new google.maps.InfoWindow();
+        
+        stops.forEach(stop => {
+            const marker = new google.maps.Marker({
+                position: { lat: stop.lat, lng: stop.lng },
+                map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 6,
+                    fillColor: "#06B6D4",
+                    fillOpacity: 1,
+                    strokeColor: "#ffffff",
+                    strokeWeight: 2,
+                },
+                title: stop.name
+            });
+            
+            marker.addListener("click", () => {
+                infoWindow.setContent(`
+                    <div style="font-family: 'Inter', sans-serif; min-width: 150px;">
+                        <h4 style="margin: 0 0 4px; font-size: 14px; color: #0F172A;">${stop.name}</h4>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #64748B; margin-bottom: 8px;">${stop.stopCode}</div>
+                        <span style="background:var(--primary-light); color:var(--primary); padding:2px 8px; border-radius:4px; font-size:11px; font-weight:bold;">${stop.routeCount} Routes</span>
+                    </div>
+                `);
+                infoWindow.open(map, marker);
+            });
+            
+            stopMarkers.push(marker);
+        });
+    }
+
+    function plotRoutes(routes) {
+        const infoWindow = new google.maps.InfoWindow();
+        
+        routes.forEach(route => {
+            const polyline = new google.maps.Polyline({
+                path: route.path,
+                geodesic: true,
+                strokeColor: route.color,
+                strokeOpacity: 0.8,
+                strokeWeight: 4,
+                map: map
+            });
+            
+            // Allow clicking the route line
+            google.maps.event.addListener(polyline, 'click', function(e) {
+                infoWindow.setPosition(e.latLng);
+                infoWindow.setContent(`
+                    <div style="font-family:'Inter',sans-serif;">
+                        <span style="background:${route.color}; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold;">${route.routeNumber}</span>
+                        <h4 style="margin: 6px 0; font-size:13px;">${route.name}</h4>
+                        <div style="font-size:11px; color:#64748B;">Dist: ${route.totalDistance} km</div>
+                    </div>
+                `);
+                infoWindow.open(map);
+            });
+            
+            routePolylines.push({ id: route.routeNumber, polyline: polyline });
+        });
+    }
+
+    async function fetchLiveBuses() {
+        try {
+            const res = await fetch('/api/bus-locations');
+            const buses = await res.json();
+            
+            updateLiveBuses(buses);
+            updateSidebar(buses);
+            
+        } catch (error) {
+            console.error("Error fetching live buses:", error);
+        }
+    }
+
+    function updateLiveBuses(buses) {
+        const infoWindow = new google.maps.InfoWindow();
+        
+        buses.forEach(bus => {
+            if (!bus.lat || !bus.lng) return;
+            
+            const position = new google.maps.LatLng(bus.lat, bus.lng);
+            
+            if (busMarkers[bus.busNumber]) {
+                // Update existing
+                try {
+                    busMarkers[bus.busNumber].setPosition(position);
+                } catch(e) {}
+            } else {
+                // Create new
+                const isMaint = bus.status === 'Maintenance';
+                const fillColor = isMaint ? '#F59E0B' : '#4F46E5';
+                
+                const marker = new google.maps.Marker({
+                    position: position,
+                    map: map,
+                    icon: {
+                        // Drawing a custom simple bus/pin path
+                        path: 'M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zM12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z',
+                        fillColor: fillColor,
+                        fillOpacity: 1,
+                        strokeColor: '#fff',
+                        strokeWeight: 2,
+                        scale: 1.5,
+                        anchor: new google.maps.Point(12, 22)
+                    },
+                    title: bus.busNumber,
+                    zIndex: 100 // ensure buses are above stops
+                });
+                
+                marker.addListener('click', () => {
+                    const badgeClr = isMaint ? 'var(--warning)' : 'var(--success)';
+                    infoWindow.setContent(`
+                        <div style="font-family:'Inter',sans-serif; min-width:140px;">
+                            <h4 style="margin: 0 0 4px; font-family:'JetBrains Mono',monospace;">${bus.busNumber}</h4>
+                            <div style="font-size:12px; font-weight:600; color:var(--primary); margin-bottom: 8px;">Route: ${bus.routeNumber}</div>
+                            <span style="display:inline-block; border:1px solid ${badgeClr}; color:${badgeClr}; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:bold;">${bus.status}</span>
+                            <span style="display:inline-block; background:#F1F5F9; color:#64748B; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:bold;">${bus.type}</span>
+                        </div>
+                    `);
+                    infoWindow.open(map, marker);
+                });
+                
+                busMarkers[bus.busNumber] = marker;
+            }
+        });
+    }
+
+    function updateSidebar(buses) {
+        const container = document.getElementById('fleet-list');
+        container.innerHTML = '';
+        
+        let validBuses = buses.filter(b => b.lat && b.lng);
+        
+        if(validBuses.length === 0) {
+            container.innerHTML = '<div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">No active signal</div>';
+            return;
+        }
+        
+        validBuses.forEach(bus => {
+            const isMaint = bus.status === 'Maintenance';
+            const badgeClass = isMaint ? 'badge-maintenance' : 'badge-active';
+            
+            const div = document.createElement('div');
+            div.className = 'fleet-item';
+            div.innerHTML = `
+                <div class="fleet-item-header">
+                    <span class="fleet-bus-name">${bus.busNumber}</span>
+                    <span class="fleet-route">${bus.routeNumber}</span>
+                </div>
+                <div class="fleet-badges">
+                    <span class="${badgeClass}">${bus.status}</span>
+                    <span class="badge-${bus.type.replace('-','').toLowerCase()}">${bus.type}</span>
+                </div>
+            `;
+            
+            div.onclick = () => {
+                map.panTo({ lat: bus.lat, lng: bus.lng });
+                map.setZoom(16);
+            };
+            
+            container.appendChild(div);
+        });
+    }
+
+    // UI Controls
+    document.getElementById('btn-toggle-routes').onclick = function() {
+        this.classList.toggle('active');
+        const show = this.classList.contains('active');
+        routePolylines.forEach(item => item.polyline.setMap(show ? map : null));
+    };
+    
+    document.getElementById('btn-toggle-stops').onclick = function() {
+        this.classList.toggle('active');
+        const show = this.classList.contains('active');
+        stopMarkers.forEach(m => m.setMap(show ? map : null));
+    };
+    
+    document.getElementById('btn-center-map').onclick = function() {
+        if(stopMarkers.length > 0) {
+            const bounds = new google.maps.LatLngBounds();
+            stopMarkers.forEach(m => bounds.extend(m.getPosition()));
+            map.fitBounds(bounds);
+        } else {
+            map.setCenter({ lat: 19.0760, lng: 72.8777 });
+            map.setZoom(12);
+        }
+    };
+    
+    function populateRouteFilter(routes) {
+        const select = document.getElementById('route-filter');
+        routes.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.routeNumber;
+            opt.textContent = `${r.routeNumber} - ${r.name}`;
+            select.appendChild(opt);
+        });
+    }
+    
+    document.getElementById('route-filter').onchange = function() {
+        const selected = this.value;
+        routePolylines.forEach(item => {
+            if(selected === 'ALL' || item.id === selected) {
+                item.polyline.setMap(document.getElementById('btn-toggle-routes').classList.contains('active') ? map : null);
+            } else {
+                item.polyline.setMap(null);
+            }
+        });
+    };
+
+    // Update map style on theme switch
+    window.addEventListener('themeChanged', () => {
+        if (map) {
+            map.setOptions({ styles: getAppropriateMapStyle() });
+        }
+    });
+
+</script>
+{% endblock %}

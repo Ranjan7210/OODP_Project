@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- ===== PAGE HEADER ===== -->
+<div class="page-header fade-up" id="data-header">
+    <h1 class="page-title">Data Explorer</h1>
+    <p class="page-subtitle">Live data from C++ backend</p>
+</div>
+
+<!-- ===== PILL TABS ===== -->
+<div class="pill-tabs" id="data-tabs">
+    <button class="pill-tab active" data-tab="buses-panel" onclick="switchTab(this, 'buses-panel')">
+        <i class="bi bi-bus-front-fill"></i> Buses
+    </button>
+    <button class="pill-tab" data-tab="routes-panel" onclick="switchTab(this, 'routes-panel')">
+        <i class="bi bi-signpost-split-fill"></i> Routes
+    </button>
+    <button class="pill-tab" data-tab="stops-panel" onclick="switchTab(this, 'stops-panel')">
+        <i class="bi bi-geo-alt-fill"></i> Stops
+    </button>
+    <button class="pill-tab" data-tab="schedules-panel" onclick="switchTab(this, 'schedules-panel')">
+        <i class="bi bi-clock-fill"></i> Schedules
+    </button>
+</div>
+
+<!-- ===== BUSES TABLE ===== -->
+<div class="tab-panel active" id="buses-panel">
+    {% if buses %}
+    <div class="table-card fade-up">
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="buses-table">
+                <thead>
+                    <tr>
+                        <th>Bus Number</th>
+                        <th>Capacity</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Route ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bus in buses %}
+                    <tr>
+                        <td class="td-mono">{{ bus.busNumber }}</td>
+                        <td>{{ bus.capacity }}</td>
+                        <td>
+                            {% if bus.type == 'AC' %}
+                                <span class="badge-ac">AC</span>
+                            {% else %}
+                                <span class="badge-nonac">Non-AC</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if bus.status == 'Active' %}
+                                <span class="badge-active">Active</span>
+                            {% else %}
+                                <span class="badge-maintenance">Maintenance</span>
+                            {% endif %}
+                        </td>
+                        <td><a href="#" class="route-link">{{ bus.currentRouteId }}</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-inbox"></i><p>No bus data available. Run the C++ backend to generate data.</p></div>
+    {% endif %}
+</div>
+
+<!-- ===== ROUTES TABLE ===== -->
+<div class="tab-panel" id="routes-panel">
+    {% if routes %}
+    <div class="table-card fade-up">
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="routes-table">
+                <thead>
+                    <tr>
+                        <th>Route Number</th>
+                        <th>Name</th>
+                        <th>Start Stop</th>
+                        <th>End Stop</th>
+                        <th>Distance (km)</th>
+                        <th>Stops</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for route in routes %}
+                    <tr>
+                        <td class="td-mono"><a href="#" class="route-link">{{ route.routeNumber }}</a></td>
+                        <td>{{ route.name }}</td>
+                        <td>{{ route.startStop }}</td>
+                        <td>{{ route.endStop }}</td>
+                        <td>{{ route.totalDistance }}</td>
+                        <td>
+                            {% if route.stops %}
+                                {% for stop in route.stops.split(';') %}
+                                    <span class="badge-stop">{{ stop }}</span>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-signpost-split"></i><p>No route data available.</p></div>
+    {% endif %}
+</div>
+
+<!-- ===== STOPS TABLE ===== -->
+<div class="tab-panel" id="stops-panel">
+    {% if stops %}
+    <div class="table-card fade-up">
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="stops-table">
+                <thead>
+                    <tr>
+                        <th>Stop Code</th>
+                        <th>Name</th>
+                        <th>Landmark</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                        <th>Route Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stop in stops %}
+                    <tr>
+                        <td class="td-mono">{{ stop.stopCode }}</td>
+                        <td>{{ stop.name }}</td>
+                        <td>{{ stop.landmark }}</td>
+                        <td>{{ "%.6f"|format(stop.latitude) }}</td>
+                        <td>{{ "%.6f"|format(stop.longitude) }}</td>
+                        <td><span class="badge-count">{{ stop.routeCount }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-geo-alt"></i><p>No stop data available.</p></div>
+    {% endif %}
+</div>
+
+<!-- ===== SCHEDULES TABLE ===== -->
+<div class="tab-panel" id="schedules-panel">
+    {% if schedules %}
+    <div class="table-card fade-up">
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="schedules-table">
+                <thead>
+                    <tr>
+                        <th>Bus ID</th>
+                        <th>Route ID</th>
+                        <th>Departure</th>
+                        <th>Arrival</th>
+                        <th>Days</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sch in schedules %}
+                    <tr>
+                        <td class="td-mono">{{ sch.busId }}</td>
+                        <td><a href="#" class="route-link">{{ sch.routeId }}</a></td>
+                        <td>{{ sch.departureTime }}</td>
+                        <td>{{ sch.arrivalTime }}</td>
+                        <td><span class="badge-days">{{ sch.days }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-clock-history"></i><p>No schedule data available.</p></div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(btn, panelId) {
+    // Deactivate all tabs
+    document.querySelectorAll('.pill-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+    // Activate clicked tab
+    btn.classList.add('active');
+    document.getElementById(panelId).classList.add('active');
+}
+</script>
+{% endblock %}

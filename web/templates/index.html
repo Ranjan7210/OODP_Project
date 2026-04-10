@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- ===== HERO BANNER ===== -->
+<section class="hero-banner fade-up" id="hero-banner">
+    <h1 class="hero-title">RouteEngine</h1>
+    <p class="hero-subtitle">Real-time Bus Route Intelligence Dashboard</p>
+    <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        Live System
+    </div>
+</section>
+
+<!-- ===== STAT CARDS ===== -->
+<section class="stat-cards-grid" id="main-stats">
+    <a href="/map" style="text-decoration: none; color: inherit;">
+        <div class="stat-card green fade-up" id="card-live" style="cursor: pointer; border: 1px solid var(--success);">
+            <div class="stat-icon green">
+                <div class="pulse-dot"></div>
+            </div>
+            <div class="stat-body">
+                <span class="stat-number">{{ stats.active_count }}</span>
+                <span class="stat-label">Live Buses</span>
+            </div>
+        </div>
+    </a>
+
+    <div class="stat-card indigo fade-up" id="card-buses">
+        <div class="stat-icon indigo"><i class="bi bi-bus-front-fill"></i></div>
+        <div class="stat-body">
+            <span class="stat-number">{{ stats.total_buses }}</span>
+            <span class="stat-label">Total Buses</span>
+        </div>
+    </div>
+
+    <div class="stat-card cyan fade-up" id="card-stops">
+        <div class="stat-icon cyan"><i class="bi bi-geo-alt-fill"></i></div>
+        <div class="stat-body">
+            <span class="stat-number">{{ stats.total_stops }}</span>
+            <span class="stat-label">Total Stops</span>
+        </div>
+    </div>
+
+    <div class="stat-card emerald fade-up" id="card-routes">
+        <div class="stat-icon emerald"><i class="bi bi-signpost-split-fill"></i></div>
+        <div class="stat-body">
+            <span class="stat-number">{{ stats.total_routes }}</span>
+            <span class="stat-label">Total Routes</span>
+        </div>
+    </div>
+
+    <div class="stat-card amber fade-up" id="card-distance">
+        <div class="stat-icon amber"><i class="bi bi-speedometer2"></i></div>
+        <div class="stat-body">
+            <span class="stat-number">{{ stats.total_distance }} <small>km</small></span>
+            <span class="stat-label">Network Distance</span>
+        </div>
+    </div>
+</section>
+
+<!-- ===== AC vs NON-AC ===== -->
+<section class="fleet-row" id="fleet-type-cards">
+    <div class="stat-card green fade-up" id="card-ac">
+        <div class="stat-icon green"><i class="bi bi-snow"></i></div>
+        <div class="stat-body">
+            <span class="stat-number">{{ stats.ac_count }}</span>
+            <span class="stat-label">AC Buses</span>
+        </div>
+    </div>
+
+    <div class="stat-card amber fade-up" id="card-nonac">
+        <div class="stat-icon amber"><i class="bi bi-fan"></i></div>
+        <div class="stat-body">
+            <span class="stat-number">{{ stats.non_ac_count }}</span>
+            <span class="stat-label">Non-AC Buses</span>
+        </div>
+    </div>
+</section>
+
+<!-- ===== OOP ARCHITECTURE ===== -->
+<section class="oop-section" id="oop-section">
+    <h2 class="section-heading">System Architecture (OOP)</h2>
+
+    <div class="oop-grid">
+        <div class="oop-card fade-up">
+            <div class="oop-icon-circle indigo"><i class="bi bi-diagram-3-fill"></i></div>
+            <h3>Inheritance</h3>
+            <p>TransportEntity base class extended by Bus, Stop, and Route types.</p>
+        </div>
+
+        <div class="oop-card fade-up">
+            <div class="oop-icon-circle purple"><i class="bi bi-boxes"></i></div>
+            <h3>Polymorphism</h3>
+            <p>Virtual functions handle diverse entity operations via base pointers.</p>
+        </div>
+
+        <div class="oop-card fade-up">
+            <div class="oop-icon-circle emerald"><i class="bi bi-shield-lock-fill"></i></div>
+            <h3>Encapsulation</h3>
+            <p>Private fields protect internal GPS and mechanical state data.</p>
+        </div>
+
+        <div class="oop-card fade-up">
+            <div class="oop-icon-circle amber"><i class="bi bi-puzzle-fill"></i></div>
+            <h3>Composition</h3>
+            <p>Schedule HAS-A Bus and Route relationship through object nesting.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===== DATA FLOW ===== -->
+<section class="dataflow-section" id="dataflow-section">
+    <h2 class="section-heading">How RouteEngine Works</h2>
+
+    <div class="dataflow-container">
+        <div class="dataflow-box fade-up">
+            <i class="bi bi-terminal-fill"></i>
+            <span class="df-label">C++ Program</span>
+            <span class="df-sub">Data Management</span>
+        </div>
+
+        <div class="dataflow-arrow"></div>
+
+        <div class="dataflow-box fade-up">
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+            <span class="df-label">CSV Files</span>
+            <span class="df-sub">Shared Storage</span>
+        </div>
+
+        <div class="dataflow-arrow"></div>
+
+        <div class="dataflow-box fade-up">
+            <i class="bi bi-globe2"></i>
+            <span class="df-label">Flask Dashboard</span>
+            <span class="df-sub">Web Visualization</span>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

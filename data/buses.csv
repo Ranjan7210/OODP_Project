@@ -1,0 +1,5 @@
+id,name,busNumber,capacity,type,status,currentRouteId
+1,BEST Bus 1,MH-01-1234,45,AC,Active,R-101
+2,BEST Bus 2,MH-04-9821,52,Non-AC,Active,R-204
+3,BEST Bus 3,MH-02-5566,45,AC,Maintenance,R-101
+4,BEST Bus 4,MH-03-7712,40,Non-AC,Active,R-505

@@ -1,0 +1,5 @@
+id,busId,routeId,departureTime,arrivalTime,days
+1,MH-01-1234,R-101,06:00,07:15,Mon-Sat
+2,MH-04-9821,R-204,06:30,08:00,Mon-Sun
+3,MH-03-7712,R-505,07:00,09:30,Mon-Fri
+4,MH-01-1234,R-412,10:00,12:00,Mon-Sat

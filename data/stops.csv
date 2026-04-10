@@ -1,0 +1,9 @@
+id,name,stopCode,landmark,latitude,longitude,routeCount
+1,Colaba Bus Station,CBS-001,Gateway of India,18.921984,72.834654,4
+2,Churchgate Terminal,CGT-002,Churchgate Station,18.932533,72.826896,3
+3,Marine Drive,MRD-003,Netaji Subhash Road,18.943558,72.823410,2
+4,Mumbai Central,MBC-004,Mumbai Central Station,18.968588,72.819337,5
+5,Dadar TT Circle,DTT-005,Dadar Station,19.018375,72.843811,6
+6,Bandra Reclamation,BDR-006,Bandra Bandstand,19.048815,72.820987,3
+7,Andheri Station East,ASE-007,Andheri Station,19.119437,72.846420,4
+8,Borivali Bus Depot,BBD-008,Borivali Station,19.228273,72.856487,2
