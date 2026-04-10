@@ -1,6 +1,6 @@
 from flask import Flask, render_template
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='../templates', static_folder='../static')
 
 @app.route('/')
 def index():
@@ -24,5 +24,6 @@ def data():
     ]
     return render_template('data.html', schedules=schedules)
 
+# This is for local development only
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
