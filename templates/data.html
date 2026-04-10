@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Route Schedules - BUSSYS{% endblock %}
+{% block page_title %}Route Schedules{% endblock %}
+{% block breadcrumb %}Fleet Data / Schedules{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <ul class="nav nav-pills" id="pills-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pills-morning-tab" data-bs-toggle="pill" data-bs-target="#pills-morning" type="button" role="tab" aria-selected="true">Morning Shift</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-afternoon-tab" data-bs-toggle="pill" data-bs-target="#pills-afternoon" type="button" role="tab" aria-selected="false">Afternoon Shift</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="pills-evening-tab" data-bs-toggle="pill" data-bs-target="#pills-evening" type="button" role="tab" aria-selected="false">Evening Shift</button>
+                    </li>
+                </ul>
+                <button class="btn btn-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-plus-lg"></i> Add Schedule
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="tab-content" id="pills-tabContent">
+                    <div class="tab-pane fade show active" id="pills-morning" role="tabpanel" tabindex="0">
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Bus ID</th>
+                                        <th>Route Name</th>
+                                        <th>Departure</th>
+                                        <th>Arrival</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for schedule in schedules %}
+                                    <tr>
+                                        <td><span class="fw-bold">{{ schedule.id }}</span></td>
+                                        <td>{{ schedule.route }}</td>
+                                        <td>{{ schedule.dep }}</td>
+                                        <td>{{ schedule.arr }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ schedule.status_class }} bg-opacity-10 text-{{ schedule.status_class }}">
+                                                {{ schedule.status }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-light border"><i class="bi bi-pencil"></i></button>
+                                            <button class="btn btn-sm btn-light border text-danger"><i class="bi bi-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="pills-afternoon" role="tabpanel" tabindex="0">
+                        <div class="p-5 text-center text-muted">
+                            <i class="bi bi-clock-history fs-1 d-block mb-3 opacity-25"></i>
+                            Afternoon schedule data is loading...
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="pills-evening" role="tabpanel" tabindex="0">
+                        <div class="p-5 text-center text-muted">
+                            <i class="bi bi-moon-stars fs-1 d-block mb-3 opacity-25"></i>
+                            Evening schedule data is loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <span class="small text-muted">Showing 4 of 48 schedules</span>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item disabled"><a class="page-item link-secondary px-2 text-decoration-none" href="#">Prev</a></li>
+                        <li class="page-item active"><a class="page-item link-secondary px-2 text-decoration-none" href="#">1</a></li>
+                        <li class="page-item"><a class="page-item link-secondary px-2 text-decoration-none" href="#">2</a></li>
+                        <li class="page-item"><a class="page-item link-secondary px-2 text-decoration-none" href="#">Next</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Seat Layout Grid Block (Optional UI Block as requested) -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="mb-0 fw-bold">Bus B-101 Seat Manifest</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 justify-content-center">
+                    {% for i in range(1, 21) %}
+                    <div class="col-auto">
+                        <div class="rounded border text-center p-2 {% if i % 4 == 0 %}bg-danger bg-opacity-10 text-danger border-danger{% else %}bg-light{% endif %}" style="width: 40px; height: 40px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center;">
+                            {{ i }}
+                        </div>
+                    </div>
+                    {% if i % 4 == 0 %}<div class="w-100 mb-2"></div>{% endif %}
+                    {% endfor %}
+                </div>
+                <div class="mt-4 d-flex justify-content-center gap-4 small text-muted">
+                    <span><i class="bi bi-square-fill text-light border"></i> Available</span>
+                    <span><i class="bi bi-square-fill text-danger text-opacity-25"></i> Booked</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
