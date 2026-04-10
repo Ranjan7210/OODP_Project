@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BUSSYS{% endblock %}
+{% block page_title %}Overview Dashboard{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Stat Cards -->
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-primary border-4">
+            <div class="card-body">
+                <div class="stat-label">Total Buses</div>
+                <div class="stat-value">{{ stats.total_buses }}</div>
+                <div class="small text-success fw-semibold"><i class="bi bi-arrow-up"></i> +4% from last month</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-info border-4">
+            <div class="card-body">
+                <div class="stat-label">Active Routes</div>
+                <div class="stat-value">{{ stats.active_routes }}</div>
+                <div class="small text-muted fw-semibold">2 pending review</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-warning border-4">
+            <div class="card-body">
+                <div class="stat-label">Daily Trips</div>
+                <div class="stat-value">{{ stats.daily_trips }}</div>
+                <div class="small text-danger fw-semibold"><i class="bi bi-arrow-down"></i> -2% peak time</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card border-start border-success border-4">
+            <div class="card-body">
+                <div class="stat-label">Fleet Efficiency</div>
+                <div class="stat-value">{{ stats.fleet_efficiency }}</div>
+                <div class="small text-success fw-semibold">Above target levels</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Map Placeholder -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">Live Fleet Tracking</h6>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        All Routes
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Route A</a></li>
+                        <li><a class="dropdown-item" href="#">Route B</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="map-placeholder m-3 mt-0">
+                    <!-- This would be an interactive map in production -->
+                    <i class="bi bi-pin-map fs-1 opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions / Alerts -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="mb-0 fw-bold">System Alerts</h6>
+            </div>
+            <div class="card-body pt-0">
+                <div class="list-group list-group-flush small">
+                    <div class="list-group-item px-0 border-0 mb-3">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="bg-warning bg-opacity-10 text-warning px-2 py-1 rounded">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                            <div>
+                                <span class="fw-bold d-block">Route Delay</span>
+                                <span class="text-muted">Bus B-102 is delayed by 15 mins due to traffic at Central Sq.</span>
+                                <span class="d-block mt-1 text-primary cursor-pointer fw-600">Notify Driver</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="list-group-item px-0 border-0 mb-3">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="bg-danger bg-opacity-10 text-danger px-2 py-1 rounded">
+                                <i class="bi bi-tools"></i>
+                            </div>
+                            <div>
+                                <span class="fw-bold d-block">Maintenance Due</span>
+                                <span class="text-muted">Bus B-104 engine diagnostics required immediately.</span>
+                                <span class="d-block mt-1 text-primary cursor-pointer fw-600">Schedule Service</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-link btn-sm w-100 text-decoration-none text-muted">View all alerts</button>
+            </div>
+        </div>
+
+        <div class="card mt-4 bg-primary text-white overflow-hidden shadow-none">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-8">
+                        <h6 class="fw-bold">New Route Plan</h6>
+                        <p class="small mb-2 opacity-75">Optimized schedule for Sunday peak hours is ready.</p>
+                        <button class="btn btn-sm btn-light text-primary fw-bold">Review Now</button>
+                    </div>
+                    <div class="col-4 text-center">
+                        <i class="bi bi-lightning-charge fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
