@@ -35,11 +35,25 @@ def read_csv(filepath):
 
 
 def read_buses():
-    return read_csv(BUSES_CSV)
+    rows = read_csv(BUSES_CSV)
+    for r in rows:
+        try:
+            r['capacity'] = int(r.get('capacity', 0))
+        except (ValueError, TypeError):
+            r['capacity'] = 0
+    return rows
 
 
 def read_stops():
-    return read_csv(STOPS_CSV)
+    rows = read_csv(STOPS_CSV)
+    for r in rows:
+        try:
+            r['latitude'] = float(r.get('latitude', 0))
+            r['longitude'] = float(r.get('longitude', 0))
+            r['routeCount'] = int(r.get('routeCount', 0))
+        except (ValueError, TypeError):
+            pass
+    return rows
 
 
 def read_routes():
@@ -48,6 +62,10 @@ def read_routes():
         # stops are semicolon-separated in CSV
         raw = r.get('stops', '')
         r['stop_list'] = [s.strip() for s in raw.split(';') if s.strip()]
+        try:
+            r['totalDistance'] = float(r.get('totalDistance', 0))
+        except (ValueError, TypeError):
+            r['totalDistance'] = 0.0
     return rows
 
 
@@ -111,22 +129,8 @@ def next_id(rows):
     return (max(ids) + 1) if ids else 1
 
 
-# ============================================================
-# LANDING PAGE
-# ============================================================
-
-@app.route('/')
-def landing():
-    return render_template('landing.html')
-
-
-# ============================================================
-# ADMIN PORTAL — Routes
-# ============================================================
-
-@app.route('/admin/')
-@app.route('/admin/dashboard')
-def admin_dashboard():
+def get_stats_data():
+    """Shared helper to calculate all statistics and chart data."""
     buses     = read_buses()
     stops     = read_stops()
     routes    = read_routes()
@@ -150,6 +154,9 @@ def admin_dashboard():
             pass
     total_distance = round(total_distance, 1)
 
+    # Health score calculation
+    health_score = round((active_count / total_buses * 100)) if total_buses > 0 else 100
+
     # Busiest stops for bar chart (top 8)
     sorted_stops = sorted(stops, key=lambda s: int(s.get('routeCount', 0)), reverse=True)[:8]
     stop_labels  = [s.get('name', '') for s in sorted_stops]
@@ -170,7 +177,8 @@ def admin_dashboard():
         'total_routes': total_routes,
         'total_schedules': total_schedules,
         'ac_count': ac_count,
-        'nonac_count': nonac_count,
+        'non_ac_count': nonac_count, # for index.html compatibility
+        'nonac_count': nonac_count,  # for compatibility
         'active_count': active_count,
         'maint_count': maint_count,
         'total_distance': total_distance,
@@ -178,21 +186,175 @@ def admin_dashboard():
     }
 
     chart_data = {
+        'total_buses': total_buses,
         'ac_count': ac_count,
+        'non_ac_count': nonac_count,
         'nonac_count': nonac_count,
         'active_count': active_count,
         'maint_count': maint_count,
+        'health_score': health_score,
         'stop_labels': stop_labels,
         'stop_counts': stop_counts,
         'route_labels': route_labels,
         'route_distances': route_distances,
     }
 
+    # For stats.html route summary
+    route_summary = []
+    for r in routes:
+        dist = 0
+        try: dist = float(r.get('totalDistance', 0))
+        except: pass
+        coverage = min(100, (len(r.get('stop_list', [])) / 10 * 100)) if len(r.get('stop_list', [])) > 0 else 0
+        eff = 'NORMAL'
+        if dist > 30 and coverage > 80: eff = 'HIGH'
+        elif dist < 10: eff = 'CRITICAL'
+        
+        route_summary.append({
+            'routeNumber': r.get('routeNumber'),
+            'name': r.get('name'),
+            'distance': dist,
+            'coverage': round(coverage),
+            'efficiency': eff
+        })
+
+    return {
+        'stats': stats,
+        'chart_data': chart_data,
+        'buses': buses,
+        'stops': stops,
+        'routes': routes,
+        'schedules': schedules,
+        'route_summary': route_summary
+    }
+
+
+# ============================================================
+# LANDING PAGE
+# ============================================================
+
+@app.route('/')
+def landing():
+    data = get_stats_data()
+    return render_template('landing.html', stats=data['stats'])
+
+
+@app.route('/dashboard')
+def dashboard():
+    data = get_stats_data()
+    return render_template('index.html', stats=data['stats'], chart_data=data['chart_data'])
+
+
+@app.route('/data')
+def data_explorer():
+    data = get_stats_data()
+    return render_template('data.html', 
+                           buses=data['buses'], 
+                           routes=data['routes'], 
+                           stops=data['stops'], 
+                           schedules=data['schedules'])
+
+
+@app.route('/map')
+def map_view():
+    return render_template('map.html', api_key=None)
+
+
+@app.route('/stats')
+def stats_view():
+    data = get_stats_data()
+    return render_template('stats.html', 
+                           chart_data=data['chart_data'], 
+                           route_summary=data['route_summary'])
+
+
+# ============================================================
+# API ENDPOINTS (for Map and AJAX)
+# ============================================================
+
+@app.route('/api/stops')
+def api_stops():
+    stops = read_stops()
+    # Format for map.html
+    formatted = []
+    for s in stops:
+        try:
+            formatted.append({
+                'stopCode': s.get('id', ''),
+                'name': s.get('name', ''),
+                'lat': float(s.get('latitude', 19.0760)),
+                'lng': float(s.get('longitude', 72.8777)),
+                'routeCount': int(s.get('routeCount', 0))
+            })
+        except: pass
+    return jsonify(formatted)
+
+
+@app.route('/api/routes-geo')
+def api_routes_geo():
+    routes = read_routes()
+    stops_data = {s['name']: s for s in read_stops()}
+    
+    formatted = []
+    colors = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+    
+    for i, r in enumerate(routes):
+        path = []
+        stop_names = r.get('stop_list', [])
+        for name in stop_names:
+            if name in stops_data:
+                s = stops_data[name]
+                try:
+                    path.append({'lat': float(s.get('latitude')), 'lng': float(s.get('longitude'))})
+                except: pass
+        
+        formatted.append({
+            'routeNumber': r.get('routeNumber'),
+            'name': r.get('name'),
+            'totalDistance': r.get('totalDistance'),
+            'color': colors[i % len(colors)],
+            'path': path
+        })
+    return jsonify(formatted)
+
+
+@app.route('/api/bus-locations')
+def api_bus_locations():
+    buses = read_buses()
+    # Mock some movement/locations based on currentRouteId
+    # In a real app, these would come from a GPS tracking table
+    stops_data = {s['id']: s for s in read_stops()} # Using stop ID or Name
+    
+    formatted = []
+    for b in buses:
+        # Mocking lat/lng near Mumbai if not available
+        lat = 19.0760 + (int(b.get('id', 0)) % 10) * 0.01
+        lng = 72.8777 + (int(b.get('id', 0)) % 7) * 0.01
+        
+        formatted.append({
+            'busNumber': b.get('busNumber'),
+            'status': b.get('status'),
+            'type': b.get('type'),
+            'routeNumber': b.get('currentRouteId'),
+            'lat': lat,
+            'lng': lng
+        })
+    return jsonify(formatted)
+
+
+# ============================================================
+# ADMIN PORTAL — Routes
+# ============================================================
+
+@app.route('/admin/')
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    data = get_stats_data()
     return render_template('admin/dashboard.html',
-                           stats=stats,
-                           chart_data=chart_data,
-                           buses=buses,
-                           schedules=schedules)
+                           stats=data['stats'],
+                           chart_data=data['chart_data'],
+                           buses=data['buses'],
+                           schedules=data['schedules'])
 
 
 @app.route('/admin/buses')
@@ -365,4 +527,4 @@ def citizen_schedules():
 # Run
 # ============================================================
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=0) # Automatically find an available port preferred, but I'll use 5001 for consistency.

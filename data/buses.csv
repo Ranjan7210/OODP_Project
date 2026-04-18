@@ -13,3 +13,4 @@ id,name,busNumber,capacity,type,status,currentRouteId
 12,BEST Bus 12,MH-03-NP-1183,55,AC,Active,R-C12
 13,BEST Bus 13,MH-01-QR-6621,48,Non-AC,Active,R-21
 14,BEST Bus 14,MH-02-ST-9912,52,AC,Active,R-C42
+15,vikrant,69,69,AC,Active,R-505
