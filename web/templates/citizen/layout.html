@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Citizen Portal{% endblock %} — Mumbai BEST Transit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/citizen.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="citizen-nav">
+  <a href="{{ url_for('citizen_home') }}" class="nav-brand">
+    <div class="nav-brand-icon"><i class="fa-solid fa-bus"></i></div>
+    <div>
+      <div class="nav-brand-name">Mumbai BEST</div>
+      <div class="nav-brand-sub">Transit Portal</div>
+    </div>
+  </a>
+
+  <ul class="nav-links">
+    <li>
+      <a href="{{ url_for('citizen_home') }}"
+         class="{% if request.endpoint == 'citizen_home' %}active{% endif %}">
+        <i class="fa-solid fa-house"></i> Home
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('citizen_routes') }}"
+         class="{% if request.endpoint == 'citizen_routes' %}active{% endif %}">
+        <i class="fa-solid fa-route"></i> Routes
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('citizen_schedules') }}"
+         class="{% if request.endpoint == 'citizen_schedules' %}active{% endif %}">
+        <i class="fa-solid fa-calendar-days"></i> Schedules
+      </a>
+    </li>
+  </ul>
+
+  <div class="nav-actions">
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      Read-Only
+    </div>
+    <a href="{{ url_for('landing') }}" class="btn-nav-home">
+      <i class="fa-solid fa-arrow-left"></i> Portal Home
+    </a>
+  </div>
+</nav>
+
+<!-- ===== CONTENT ===== -->
+{% block content %}{% endblock %}
+
+</body>
+</html>

@@ -1,324 +1,365 @@
-from flask import Flask, render_template, jsonify, request
-import pandas as pd
+from flask import Flask, render_template, jsonify, request, redirect, url_for, flash
+import csv
 import os
 from datetime import datetime
-import time
-import math
 
 app = Flask(__name__)
-
-# Google Maps API Configuration
-# Add your API key below from https://console.cloud.google.com/
-GOOGLE_MAPS_API_KEY = "YOUR_API_KEY_HERE"
+app.secret_key = "oodp_bus_system_2024"
 
 # ============================================================
-# Helper — load CSV from the data/ folder (one level up)
+# DATA DIRECTORY — shared with C++ terminal program via CSVs
 # ============================================================
-def load_csv(filename):
-    """Load a CSV file from ../data/ folder. Returns empty DataFrame on error."""
-    filepath = os.path.join(os.path.dirname(__file__), '..', 'data', filename)
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+
+BUSES_CSV    = os.path.join(DATA_DIR, 'buses.csv')
+STOPS_CSV    = os.path.join(DATA_DIR, 'stops.csv')
+ROUTES_CSV   = os.path.join(DATA_DIR, 'routes.csv')
+SCHEDULES_CSV = os.path.join(DATA_DIR, 'schedules.csv')
+
+
+# ============================================================
+# CSV HELPERS — read functions (used by both portals)
+# ============================================================
+
+def read_csv(filepath):
+    """Read a CSV file and return a list of dicts. Returns [] on error."""
+    rows = []
     try:
-        df = pd.read_csv(filepath)
-        return df
-    except Exception:
-        return pd.DataFrame()
+        with open(filepath, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                rows.append(dict(row))
+    except FileNotFoundError:
+        pass
+    return rows
+
+
+def read_buses():
+    return read_csv(BUSES_CSV)
+
+
+def read_stops():
+    return read_csv(STOPS_CSV)
+
+
+def read_routes():
+    rows = read_csv(ROUTES_CSV)
+    for r in rows:
+        # stops are semicolon-separated in CSV
+        raw = r.get('stops', '')
+        r['stop_list'] = [s.strip() for s in raw.split(';') if s.strip()]
+    return rows
+
+
+def read_schedules():
+    return read_csv(SCHEDULES_CSV)
 
 
 # ============================================================
-# Route: / — Dashboard Home
+# CSV WRITE HELPERS — used only by Admin portal
+#
+# NOTE (Academic Scope): In a production system, concurrent writes
+# between the C++ process and this Flask server would require a
+# proper database (e.g. SQLite with WAL mode, PostgreSQL) or a
+# file-locking mechanism. For this academic project, we use simple
+# CSV file appending which is safe only under single-writer assumptions.
 # ============================================================
+
+def append_bus(bus_dict):
+    """Append a single bus row to buses.csv."""
+    fieldnames = ['id', 'name', 'busNumber', 'capacity', 'type', 'status', 'currentRouteId']
+    file_exists = os.path.isfile(BUSES_CSV)
+    with open(BUSES_CSV, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(bus_dict)
+
+
+def append_route(route_dict):
+    """Append a single route row to routes.csv."""
+    fieldnames = ['id', 'name', 'routeNumber', 'startStop', 'endStop', 'totalDistance', 'stops']
+    file_exists = os.path.isfile(ROUTES_CSV)
+    with open(ROUTES_CSV, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(route_dict)
+
+
+def append_schedule(sched_dict):
+    """Append a single schedule row to schedules.csv."""
+    fieldnames = ['id', 'busId', 'routeId', 'departureTime', 'arrivalTime', 'days']
+    file_exists = os.path.isfile(SCHEDULES_CSV)
+    with open(SCHEDULES_CSV, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(sched_dict)
+
+
+def next_id(rows):
+    """Return next integer ID based on existing rows."""
+    if not rows:
+        return 1
+    ids = []
+    for r in rows:
+        try:
+            ids.append(int(r.get('id', 0)))
+        except (ValueError, TypeError):
+            pass
+    return (max(ids) + 1) if ids else 1
+
+
+# ============================================================
+# LANDING PAGE
+# ============================================================
+
 @app.route('/')
-def index():
-    buses = load_csv('buses.csv')
-    stops = load_csv('stops.csv')
-    routes = load_csv('routes.csv')
-    schedules = load_csv('schedules.csv')
+def landing():
+    return render_template('landing.html')
 
-    # Summary stats
-    total_buses = len(buses)
-    total_stops = len(stops)
-    total_routes = len(routes)
-    total_distance = round(routes['totalDistance'].sum(), 1) if not routes.empty and 'totalDistance' in routes.columns else 0
 
-    ac_count = len(buses[buses['type'] == 'AC']) if not buses.empty and 'type' in buses.columns else 0
-    non_ac_count = len(buses[buses['type'] == 'Non-AC']) if not buses.empty and 'type' in buses.columns else 0
+# ============================================================
+# ADMIN PORTAL — Routes
+# ============================================================
 
-    active_count = len(buses[buses['status'] == 'Active']) if not buses.empty and 'status' in buses.columns else 0
-    maintenance_count = len(buses[buses['status'] == 'Maintenance']) if not buses.empty and 'status' in buses.columns else 0
+@app.route('/admin/')
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    buses     = read_buses()
+    stops     = read_stops()
+    routes    = read_routes()
+    schedules = read_schedules()
+
+    total_buses    = len(buses)
+    total_stops    = len(stops)
+    total_routes   = len(routes)
+    total_schedules = len(schedules)
+
+    ac_count    = sum(1 for b in buses if b.get('type') == 'AC')
+    nonac_count = sum(1 for b in buses if b.get('type') == 'Non-AC')
+    active_count = sum(1 for b in buses if b.get('status') == 'Active')
+    maint_count  = sum(1 for b in buses if b.get('status') == 'Maintenance')
+
+    total_distance = 0
+    for r in routes:
+        try:
+            total_distance += float(r.get('totalDistance', 0))
+        except (ValueError, TypeError):
+            pass
+    total_distance = round(total_distance, 1)
+
+    # Busiest stops for bar chart (top 8)
+    sorted_stops = sorted(stops, key=lambda s: int(s.get('routeCount', 0)), reverse=True)[:8]
+    stop_labels  = [s.get('name', '') for s in sorted_stops]
+    stop_counts  = [int(s.get('routeCount', 0)) for s in sorted_stops]
+
+    # Route distance data for bar chart
+    route_labels    = [r.get('routeNumber', '') for r in routes]
+    route_distances = []
+    for r in routes:
+        try:
+            route_distances.append(float(r.get('totalDistance', 0)))
+        except (ValueError, TypeError):
+            route_distances.append(0)
 
     stats = {
         'total_buses': total_buses,
         'total_stops': total_stops,
         'total_routes': total_routes,
-        'total_distance': total_distance,
+        'total_schedules': total_schedules,
         'ac_count': ac_count,
-        'non_ac_count': non_ac_count,
-        'active_count': active_count,
-        'maintenance_count': maintenance_count,
-        'sync_time': datetime.now().strftime('%H:%M:%S')
-    }
-
-    return render_template('index.html', stats=stats)
-
-
-# ============================================================
-# Route: /data — Data Management Tables
-# ============================================================
-@app.route('/data')
-def data():
-    buses = load_csv('buses.csv')
-    stops = load_csv('stops.csv')
-    routes_df = load_csv('routes.csv')
-    schedules = load_csv('schedules.csv')
-
-    # Convert to list of dicts for Jinja
-    buses_data = buses.to_dict('records') if not buses.empty else []
-    stops_data = stops.to_dict('records') if not stops.empty else []
-    routes_data = routes_df.to_dict('records') if not routes_df.empty else []
-    schedules_data = schedules.to_dict('records') if not schedules.empty else []
-
-    # Compute summary metrics for bottom cards
-    active_count = len(buses[buses['status'] == 'Active']) if not buses.empty and 'status' in buses.columns else 0
-    total_buses = len(buses)
-    fleet_health = round((active_count / total_buses * 100), 1) if total_buses > 0 else 0
-
-    summary = {
-        'fleet_health': fleet_health,
-        'total_routes': len(routes_df),
-        'total_buses': total_buses,
-    }
-
-    return render_template('data.html',
-                           buses=buses_data,
-                           stops=stops_data,
-                           routes=routes_data,
-                           schedules=schedules_data,
-                           summary=summary)
-
-
-# ============================================================
-# Route: /stats — Fleet Analytics with Chart Data
-# ============================================================
-@app.route('/stats')
-def stats():
-    buses = load_csv('buses.csv')
-    stops = load_csv('stops.csv')
-    routes_df = load_csv('routes.csv')
-    schedules = load_csv('schedules.csv')
-
-    # Chart 1: Route Distances (Bar chart)
-    route_labels = routes_df['routeNumber'].tolist() if not routes_df.empty and 'routeNumber' in routes_df.columns else []
-    route_distances = routes_df['totalDistance'].tolist() if not routes_df.empty and 'totalDistance' in routes_df.columns else []
-
-    # Chart 2: AC vs Non-AC (Pie chart)
-    ac_count = len(buses[buses['type'] == 'AC']) if not buses.empty and 'type' in buses.columns else 0
-    non_ac_count = len(buses[buses['type'] == 'Non-AC']) if not buses.empty and 'type' in buses.columns else 0
-
-    # Chart 3: Top 5 Busiest Stops (Horizontal bar)
-    if not stops.empty and 'routeCount' in stops.columns:
-        top_stops = stops.nlargest(5, 'routeCount')
-        stop_labels = top_stops['name'].tolist()
-        stop_counts = top_stops['routeCount'].tolist()
-    else:
-        stop_labels = []
-        stop_counts = []
-
-    # Chart 4: Active vs Maintenance (Doughnut)
-    active_count = len(buses[buses['status'] == 'Active']) if not buses.empty and 'status' in buses.columns else 0
-    maint_count = len(buses[buses['status'] == 'Maintenance']) if not buses.empty and 'status' in buses.columns else 0
-
-    # Network health score
-    total_buses = len(buses)
-    health_score = round((active_count / total_buses * 100), 1) if total_buses > 0 else 0
-
-    # Route summary table data
-    route_summary = []
-    if not routes_df.empty:
-        max_dist = routes_df['totalDistance'].max() if 'totalDistance' in routes_df.columns else 1
-        for _, row in routes_df.iterrows():
-            dist = row.get('totalDistance', 0)
-            coverage = round((dist / max_dist * 100), 0) if max_dist > 0 else 0
-            efficiency = 'HIGH' if coverage >= 80 else ('NORMAL' if coverage >= 50 else 'CRITICAL')
-            route_summary.append({
-                'routeNumber': row.get('routeNumber', ''),
-                'name': row.get('name', ''),
-                'distance': dist,
-                'coverage': coverage,
-                'efficiency': efficiency
-            })
-
-    chart_data = {
-        'route_labels': route_labels,
-        'route_distances': route_distances,
-        'ac_count': ac_count,
-        'non_ac_count': non_ac_count,
-        'stop_labels': stop_labels,
-        'stop_counts': stop_counts,
+        'nonac_count': nonac_count,
         'active_count': active_count,
         'maint_count': maint_count,
-        'total_buses': total_buses,
-        'health_score': health_score,
+        'total_distance': total_distance,
+        'sync_time': datetime.now().strftime('%d %b %Y, %H:%M:%S'),
     }
 
-    return render_template('stats.html',
+    chart_data = {
+        'ac_count': ac_count,
+        'nonac_count': nonac_count,
+        'active_count': active_count,
+        'maint_count': maint_count,
+        'stop_labels': stop_labels,
+        'stop_counts': stop_counts,
+        'route_labels': route_labels,
+        'route_distances': route_distances,
+    }
+
+    return render_template('admin/dashboard.html',
+                           stats=stats,
                            chart_data=chart_data,
-                           route_summary=route_summary)
+                           buses=buses,
+                           schedules=schedules)
+
+
+@app.route('/admin/buses')
+def admin_buses():
+    buses  = read_buses()
+    routes = read_routes()
+    return render_template('admin/buses.html', buses=buses, routes=routes)
+
+
+@app.route('/admin/add_bus', methods=['POST'])
+def admin_add_bus():
+    # NOTE (Academic Scope): See write helper comment above regarding
+    # concurrent write safety between C++ and Flask processes.
+    buses = read_buses()
+    new_id = next_id(buses)
+
+    bus = {
+        'id': new_id,
+        'name': request.form.get('name', '').strip(),
+        'busNumber': request.form.get('busNumber', '').strip(),
+        'capacity': request.form.get('capacity', '0').strip(),
+        'type': request.form.get('type', 'Non-AC').strip(),
+        'status': request.form.get('status', 'Active').strip(),
+        'currentRouteId': request.form.get('currentRouteId', '').strip(),
+    }
+
+    if not bus['busNumber']:
+        flash('Bus number is required.', 'error')
+        return redirect(url_for('admin_buses'))
+
+    append_bus(bus)
+    flash(f"Bus {bus['busNumber']} added successfully!", 'success')
+    return redirect(url_for('admin_buses'))
+
+
+@app.route('/admin/routes')
+def admin_routes():
+    routes = read_routes()
+    return render_template('admin/routes.html', routes=routes)
+
+
+@app.route('/admin/add_route', methods=['POST'])
+def admin_add_route():
+    # NOTE (Academic Scope): See write helper comment above.
+    routes = read_routes()
+    new_id = next_id(routes)
+
+    stops_raw = request.form.get('stops', '').strip()
+
+    route = {
+        'id': new_id,
+        'name': request.form.get('name', '').strip(),
+        'routeNumber': request.form.get('routeNumber', '').strip(),
+        'startStop': request.form.get('startStop', '').strip(),
+        'endStop': request.form.get('endStop', '').strip(),
+        'totalDistance': request.form.get('totalDistance', '0').strip(),
+        'stops': stops_raw,
+    }
+
+    if not route['routeNumber']:
+        flash('Route number is required.', 'error')
+        return redirect(url_for('admin_routes'))
+
+    append_route(route)
+    flash(f"Route {route['routeNumber']} added successfully!", 'success')
+    return redirect(url_for('admin_routes'))
+
+
+@app.route('/admin/schedules')
+def admin_schedules():
+    schedules = read_schedules()
+    buses     = read_buses()
+    routes    = read_routes()
+    return render_template('admin/schedules.html',
+                           schedules=schedules, buses=buses, routes=routes)
+
+
+@app.route('/admin/add_schedule', methods=['POST'])
+def admin_add_schedule():
+    # NOTE (Academic Scope): See write helper comment above.
+    schedules = read_schedules()
+    new_id = next_id(schedules)
+
+    sched = {
+        'id': new_id,
+        'busId': request.form.get('busId', '').strip(),
+        'routeId': request.form.get('routeId', '').strip(),
+        'departureTime': request.form.get('departureTime', '').strip(),
+        'arrivalTime': request.form.get('arrivalTime', '').strip(),
+        'days': request.form.get('days', '').strip(),
+    }
+
+    append_schedule(sched)
+    flash('Schedule added successfully!', 'success')
+    return redirect(url_for('admin_schedules'))
 
 
 # ============================================================
-# API Route: /api/routes — JSON endpoint
-# ============================================================
-@app.route('/api/routes')
-def api_routes():
-    routes_df = load_csv('routes.csv')
-    if routes_df.empty:
-        return jsonify([])
-    return jsonify(routes_df.to_dict('records'))
-
-
-# ============================================================
-# MAPS INTEGRATION: Page & APIs
+# CITIZEN PORTAL — Read-Only Routes
 # ============================================================
 
-@app.route('/map')
-def map_page():
-    return render_template('map.html', api_key=GOOGLE_MAPS_API_KEY)
+@app.route('/citizen/')
+@app.route('/citizen/home')
+def citizen_home():
+    buses     = read_buses()
+    routes    = read_routes()
+    stops     = read_stops()
+    schedules = read_schedules()
+
+    active_buses   = [b for b in buses if b.get('status') == 'Active']
+    total_routes   = len(routes)
+    total_stops    = len(stops)
+    total_schedules = len(schedules)
+
+    return render_template('citizen/home.html',
+                           active_buses=active_buses,
+                           total_routes=total_routes,
+                           total_stops=total_stops,
+                           total_schedules=total_schedules,
+                           buses=buses)
 
 
-@app.route('/api/stops')
-def api_stops():
-    stops_df = load_csv('stops.csv')
-    if stops_df.empty:
-        return jsonify([])
-    return jsonify(stops_df.to_dict('records'))
+@app.route('/citizen/routes')
+def citizen_routes():
+    routes = read_routes()
+    query  = request.args.get('q', '').strip().lower()
+
+    if query:
+        filtered = []
+        for r in routes:
+            name = r.get('name', '').lower()
+            num  = r.get('routeNumber', '').lower()
+            stops_str = r.get('stops', '').lower()
+            if query in name or query in num or query in stops_str:
+                filtered.append(r)
+        routes = filtered
+
+    return render_template('citizen/routes.html', routes=routes, query=query)
 
 
-@app.route('/api/routes-geo')
-def api_routes_geo():
-    routes_df = load_csv('routes.csv')
-    stops_df = load_csv('stops.csv')
-    
-    if routes_df.empty or stops_df.empty:
-        return jsonify({})
+@app.route('/citizen/schedules')
+def citizen_schedules():
+    schedules = read_schedules()
+    buses     = read_buses()
+    routes    = read_routes()
 
-    # Build stop lookup table (name -> {lat, lng, code})
-    stop_lookup = {}
-    for _, stop in stops_df.iterrows():
-        stop_lookup[stop['name']] = {
-            'lat': stop['latitude'],
-            'lng': stop['longitude'],
-            'stopCode': stop['stopCode'],
-            'name': stop['name']
-        }
-        
-    routes_geo = []
-    colors = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444']
-    
-    for i, row in routes_df.iterrows():
-        route_num = row.get('routeNumber', '')
-        stop_list_str = row.get('stops', '')
-        if not isinstance(stop_list_str, str) or not stop_list_str:
-            continue
-            
-        stops_in_route = stop_list_str.split(';')
-        path = []
-        for s_name in stops_in_route:
-            if s_name in stop_lookup:
-                path.append(stop_lookup[s_name])
-                
-        # Assign color cyclically
-        color = colors[i % len(colors)]
-        
-        routes_geo.append({
-            'routeNumber': route_num,
-            'name': row.get('name', ''),
-            'totalDistance': row.get('totalDistance', 0),
-            'startStop': row.get('startStop', ''),
-            'endStop': row.get('endStop', ''),
-            'color': color,
-            'path': path
+    # Build lookup maps for display
+    bus_map   = {b['busNumber']: b for b in buses if 'busNumber' in b}
+    route_map = {r['routeNumber']: r for r in routes if 'routeNumber' in r}
+
+    enriched = []
+    for s in schedules:
+        bus_id   = s.get('busId', '')
+        route_id = s.get('routeId', '')
+        bus_info   = bus_map.get(bus_id, {})
+        route_info = route_map.get(route_id, {})
+        enriched.append({
+            **s,
+            'busType':    bus_info.get('type', '—'),
+            'busStatus':  bus_info.get('status', '—'),
+            'routeName':  route_info.get('name', route_id),
+            'startStop':  route_info.get('startStop', '—'),
+            'endStop':    route_info.get('endStop', '—'),
         })
-        
-    return jsonify(routes_geo)
 
-def simulate_bus_position(path, t):
-    """Interpolate coordinates along a path given time t (0 to 1 looping)"""
-    if not path or len(path) == 0:
-        return None
-    if len(path) == 1:
-        return {'lat': path[0]['lat'], 'lng': path[0]['lng']}
-        
-    # Scale t to number of segments (n stops = n-1 segments)
-    num_segments = len(path) - 1
-    scaled_t = t * num_segments
-    
-    segment_idx = int(math.floor(scaled_t))
-    if segment_idx >= num_segments:
-        segment_idx = num_segments - 1
-        
-    # Fractional part decides how far along the current segment the bus is
-    fraction = scaled_t - segment_idx
-    
-    start_point = path[segment_idx]
-    end_point = path[segment_idx + 1]
-    
-    interp_lat = start_point['lat'] + (end_point['lat'] - start_point['lat']) * fraction
-    interp_lng = start_point['lng'] + (end_point['lng'] - start_point['lng']) * fraction
-    
-    return {'lat': interp_lat, 'lng': interp_lng}
+    return render_template('citizen/schedules.html', schedules=enriched)
 
-
-@app.route('/api/bus-locations')
-def api_bus_locations():
-    buses_df = load_csv('buses.csv')
-    routes_geo_resp = api_routes_geo() 
-    if buses_df.empty or getattr(routes_geo_resp, 'json', None) is None:
-        return jsonify([])
-        
-    routes_geo = routes_geo_resp.json
-    routes_dict = {r['routeNumber']: r for r in routes_geo}
-
-    # Common time counter, looped. speed=0.0001 (approx 100 sec loop per segment roughly)
-    current_t = (time.time() * 0.0001) % 1
-        
-    live_buses = []
-    
-    for _, bus in buses_df.iterrows():
-        route_id = bus.get('currentRouteId')
-        status = bus.get('status')
-        bus_num = bus.get('busNumber')
-        bus_type = bus.get('type')
-        
-        # Add basic info
-        bus_info = {
-            'busNumber': bus_num,
-            'type': bus_type,
-            'status': status,
-            'routeNumber': route_id,
-            'lat': None,
-            'lng': None
-        }
-        
-        # If it's on a known route, simulate location
-        if route_id in routes_dict:
-            route_path = routes_dict[route_id]['path']
-            # Add a stable, arbitrary offset so all buses aren't in the exact same spot 
-            offset = hash(bus_num) % 1000 / 1000.0  
-            local_t = (current_t + offset) % 1
-            
-            # If in maintenance, we'll just freeze it at exactly its offset time
-            if status == 'Maintenance':
-                pos = simulate_bus_position(route_path, offset)
-            else:
-                pos = simulate_bus_position(route_path, local_t)
-                
-            if pos:
-                bus_info['lat'] = pos['lat']
-                bus_info['lng'] = pos['lng']
-                
-        live_buses.append(bus_info)
-        
-    return jsonify(live_buses)
 
 # ============================================================
 # Run

@@ -1,0 +1,123 @@
+{% extends "admin/layout.html" %}
+{% block title %}Bus Management{% endblock %}
+{% block page_title %}Bus Management{% endblock %}
+{% block page_sub %}Add, edit, and monitor the full fleet{% endblock %}
+
+{% block content %}
+
+<!-- ADD BUS FORM -->
+<div class="form-card">
+  <div class="form-card-title">
+    <i class="fa-solid fa-plus" style="color:var(--primary);margin-right:8px"></i>
+    Register New Bus
+  </div>
+  <form method="POST" action="{{ url_for('admin_add_bus') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="busName">Bus Name</label>
+        <input type="text" id="busName" name="name" placeholder="e.g. BEST Bus 5" required />
+      </div>
+      <div class="form-group">
+        <label for="busNumber">Bus Number *</label>
+        <input type="text" id="busNumber" name="busNumber" placeholder="e.g. MH-01-5678" required />
+      </div>
+      <div class="form-group">
+        <label for="capacity">Seating Capacity</label>
+        <input type="number" id="capacity" name="capacity" placeholder="45" min="1" max="100" />
+      </div>
+      <div class="form-group">
+        <label for="type">Bus Type</label>
+        <select id="type" name="type">
+          <option value="AC">AC</option>
+          <option value="Non-AC">Non-AC</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="Active">Active</option>
+          <option value="Maintenance">Maintenance</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="routeId">Assigned Route</label>
+        <select id="routeId" name="currentRouteId">
+          <option value="">— Unassigned —</option>
+          {% for r in routes %}
+            <option value="{{ r.routeNumber }}">{{ r.routeNumber }} — {{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <button type="submit" class="btn-primary">
+        <i class="fa-solid fa-plus"></i> Add Bus to Fleet
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- BUS TABLE -->
+<div class="table-card">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">Full Fleet Register</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">
+        {{ buses|length }} bus{% if buses|length != 1 %}es{% endif %} registered
+      </div>
+    </div>
+  </div>
+
+  {% if buses %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Bus Number</th>
+        <th>Name</th>
+        <th>Capacity</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th>Current Route</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in buses %}
+      <tr>
+        <td style="color:var(--muted);font-size:0.78rem">{{ b.id }}</td>
+        <td><code style="font-size:0.85rem;color:var(--accent)">{{ b.busNumber }}</code></td>
+        <td>{{ b.name or '—' }}</td>
+        <td>
+          <span style="font-weight:600">{{ b.capacity }}</span>
+          <span style="color:var(--muted);font-size:0.75rem"> seats</span>
+        </td>
+        <td>
+          {% if b.type == 'AC' %}
+            <span class="badge badge-ac"><span class="badge-dot"></span>AC</span>
+          {% else %}
+            <span class="badge badge-nonac"><span class="badge-dot"></span>Non-AC</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if b.status == 'Active' %}
+            <span class="badge badge-active"><span class="badge-dot"></span>Active</span>
+          {% else %}
+            <span class="badge badge-maintenance"><span class="badge-dot"></span>Maintenance</span>
+          {% endif %}
+        </td>
+        <td>
+          <code style="font-size:0.8rem;color:var(--primary)">{{ b.currentRouteId or '—' }}</code>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-bus-simple"></i>
+      <p>No buses registered yet. Use the form above to add the first bus.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "citizen/layout.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="citizen-wrapper">
+
+  <!-- HERO -->
+  <div class="citizen-hero">
+    <div class="hero-content">
+      <div class="hero-tag"><i class="fa-solid fa-location-dot"></i> &nbsp; Mumbai, Maharashtra</div>
+      <h1 class="hero-title">Your City Moves<br/>With BEST</h1>
+      <p class="hero-sub">
+        Explore live routes, schedules, and bus stops across the Mumbai network — all updated in real time.
+      </p>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-value">{{ active_buses|length }}</div>
+          <div class="hero-stat-label">Active Buses</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">{{ total_routes }}</div>
+          <div class="hero-stat-label">Routes</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">{{ total_stops }}</div>
+          <div class="hero-stat-label">Stops</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-value">{{ total_schedules }}</div>
+          <div class="hero-stat-label">Schedules</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK LINKS -->
+  <div class="stat-grid" style="margin-bottom:32px">
+    <a href="{{ url_for('citizen_routes') }}" style="text-decoration:none">
+      <div class="stat-card" style="cursor:pointer;transition:all 0.25s">
+        <div class="stat-icon blue"><i class="fa-solid fa-route"></i></div>
+        <div>
+          <div class="stat-value">{{ total_routes }}</div>
+          <div class="stat-label">View All Routes →</div>
+        </div>
+      </div>
+    </a>
+    <a href="{{ url_for('citizen_schedules') }}" style="text-decoration:none">
+      <div class="stat-card" style="cursor:pointer;transition:all 0.25s">
+        <div class="stat-icon green"><i class="fa-solid fa-calendar-days"></i></div>
+        <div>
+          <div class="stat-value">{{ total_schedules }}</div>
+          <div class="stat-label">View Schedules →</div>
+        </div>
+      </div>
+    </a>
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="fa-solid fa-map-pin"></i></div>
+      <div>
+        <div class="stat-value">{{ total_stops }}</div>
+        <div class="stat-label">Bus Stops</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber"><i class="fa-solid fa-bus"></i></div>
+      <div>
+        <div class="stat-value">{{ buses|length }}</div>
+        <div class="stat-label">Total Fleet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVE BUSES -->
+  <div class="section-title">Currently Active Buses</div>
+  <div class="section-sub">Buses currently in service across the network</div>
+
+  {% if active_buses %}
+  <div class="bus-grid">
+    {% for b in active_buses %}
+    <div class="bus-card">
+      <div class="bus-card-top">
+        <code class="bus-num">{{ b.busNumber }}</code>
+        <span class="badge badge-active"><span class="badge-dot"></span>Active</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="bus-cap"><i class="fa-solid fa-users" style="margin-right:4px"></i>{{ b.capacity }} seats</span>
+        {% if b.type == 'AC' %}
+          <span class="badge badge-ac"><span class="badge-dot"></span>AC</span>
+        {% else %}
+          <span class="badge badge-nonac"><span class="badge-dot"></span>Non-AC</span>
+        {% endif %}
+      </div>
+      {% if b.currentRouteId %}
+        <div class="bus-route"><i class="fa-solid fa-route" style="margin-right:5px"></i>{{ b.currentRouteId }}</div>
+      {% endif %}
+      {% if b.name %}
+        <div style="font-size:0.77rem;color:var(--muted);margin-top:4px">{{ b.name }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="empty-state"><i class="fa-solid fa-bus"></i><p>No active buses found in the system.</p></div>
+  {% endif %}
+
+  <!-- MAINTENANCE BUSES -->
+  {% set maint_buses = buses | selectattr('status', 'equalto', 'Maintenance') | list %}
+  {% if maint_buses %}
+  <div class="section-title" style="margin-top:12px">Under Maintenance</div>
+  <div class="section-sub">These buses are temporarily out of service</div>
+  <div class="bus-grid">
+    {% for b in maint_buses %}
+    <div class="bus-card" style="opacity:0.75;border-style:dashed">
+      <div class="bus-card-top">
+        <code class="bus-num">{{ b.busNumber }}</code>
+        <span class="badge badge-maintenance"><span class="badge-dot"></span>Maintenance</span>
+      </div>
+      <div class="bus-cap"><i class="fa-solid fa-users" style="margin-right:4px"></i>{{ b.capacity }} seats</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

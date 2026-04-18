@@ -1,0 +1,104 @@
+{% extends "admin/layout.html" %}
+{% block title %}Route Management{% endblock %}
+{% block page_title %}Route Management{% endblock %}
+{% block page_sub %}Configure bus routes and stop sequences{% endblock %}
+
+{% block content %}
+
+<!-- ADD ROUTE FORM -->
+<div class="form-card">
+  <div class="form-card-title">
+    <i class="fa-solid fa-plus" style="color:var(--accent);margin-right:8px"></i>
+    Add New Route
+  </div>
+  <form method="POST" action="{{ url_for('admin_add_route') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="routeName">Route Name</label>
+        <input type="text" id="routeName" name="name" placeholder="e.g. Colaba-Borivali Express" required />
+      </div>
+      <div class="form-group">
+        <label for="routeNumber">Route Number *</label>
+        <input type="text" id="routeNumber" name="routeNumber" placeholder="e.g. R-601" required />
+      </div>
+      <div class="form-group">
+        <label for="startStop">Start Stop</label>
+        <input type="text" id="startStop" name="startStop" placeholder="e.g. Colaba Bus Station" />
+      </div>
+      <div class="form-group">
+        <label for="endStop">End Stop</label>
+        <input type="text" id="endStop" name="endStop" placeholder="e.g. Borivali Bus Depot" />
+      </div>
+      <div class="form-group">
+        <label for="totalDistance">Total Distance (km)</label>
+        <input type="number" id="totalDistance" name="totalDistance" placeholder="32.5" step="0.1" min="0" />
+      </div>
+      <div class="form-group full">
+        <label for="stops">Stops (semicolon-separated)</label>
+        <input type="text" id="stops" name="stops"
+               placeholder="Colaba Bus Station;Marine Drive;Dadar TT Circle;Borivali Bus Depot" />
+        <span style="font-size:0.72rem;color:var(--muted);margin-top:4px">
+          Separate each stop name with a semicolon (;). Must match existing stop names exactly.
+        </span>
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <button type="submit" class="btn-primary">
+        <i class="fa-solid fa-plus"></i> Add Route
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- ROUTES TABLE -->
+<div class="table-card">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">All Routes</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">
+        {{ routes|length }} route{% if routes|length != 1 %}s{% endif %} configured
+      </div>
+    </div>
+  </div>
+
+  {% if routes %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Route #</th>
+        <th>Name</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Distance</th>
+        <th>Stops</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in routes %}
+      <tr>
+        <td><code style="font-size:0.85rem;color:var(--primary)">{{ r.routeNumber }}</code></td>
+        <td style="font-weight:600">{{ r.name }}</td>
+        <td style="color:var(--muted);font-size:0.82rem">{{ r.startStop }}</td>
+        <td style="color:var(--muted);font-size:0.82rem">{{ r.endStop }}</td>
+        <td>
+          <span style="font-weight:700">{{ r.totalDistance }}</span>
+          <span style="color:var(--muted);font-size:0.75rem"> km</span>
+        </td>
+        <td>
+          <span style="background:rgba(139,92,246,0.12);color:var(--primary);padding:3px 9px;border-radius:999px;font-size:0.73rem;font-weight:600">
+            {{ r.stop_list|length }} stops
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-route"></i>
+      <p>No routes configured yet. Add the first route above.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

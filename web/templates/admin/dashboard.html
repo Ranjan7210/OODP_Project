@@ -1,0 +1,316 @@
+{% extends "admin/layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Analytics Overview{% endblock %}
+{% block page_sub %}Real-time fleet statistics from shared CSV data{% endblock %}
+
+{% block content %}
+
+<!-- STAT CARDS -->
+<div class="stat-grid">
+  <div class="stat-card purple">
+    <div class="stat-icon"><i class="fa-solid fa-bus"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_buses }}</div>
+      <div class="stat-label">Total Buses</div>
+    </div>
+  </div>
+  <div class="stat-card cyan">
+    <div class="stat-icon"><i class="fa-solid fa-map-pin"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_stops }}</div>
+      <div class="stat-label">Bus Stops</div>
+    </div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-icon"><i class="fa-solid fa-route"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_routes }}</div>
+      <div class="stat-label">Active Routes</div>
+    </div>
+  </div>
+  <div class="stat-card amber">
+    <div class="stat-icon"><i class="fa-solid fa-calendar-days"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_schedules }}</div>
+      <div class="stat-label">Schedules</div>
+    </div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.active_count }}</div>
+      <div class="stat-label">Active Buses</div>
+    </div>
+  </div>
+  <div class="stat-card amber">
+    <div class="stat-icon"><i class="fa-solid fa-wrench"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.maint_count }}</div>
+      <div class="stat-label">In Maintenance</div>
+    </div>
+  </div>
+  <div class="stat-card cyan">
+    <div class="stat-icon"><i class="fa-solid fa-snowflake"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.ac_count }}</div>
+      <div class="stat-label">AC Buses</div>
+    </div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-icon"><i class="fa-solid fa-road"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_distance }}</div>
+      <div class="stat-label">Network km</div>
+    </div>
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div class="charts-grid">
+
+  <!-- Pie Chart: AC vs Non-AC -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Fleet Composition</div>
+        <div class="chart-sub">AC vs Non-AC breakdown</div>
+      </div>
+      <i class="fa-solid fa-chart-pie" style="color:var(--primary);opacity:0.5;font-size:1.2rem"></i>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="acPieChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Bar Chart: Busiest Stops -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Busiest Stops</div>
+        <div class="chart-sub">By number of routes served</div>
+      </div>
+      <i class="fa-solid fa-chart-bar" style="color:var(--accent);opacity:0.5;font-size:1.2rem"></i>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="stopsBarChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Bar Chart: Route Distances -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Route Distances</div>
+        <div class="chart-sub">Total km per route</div>
+      </div>
+      <i class="fa-solid fa-ruler" style="color:var(--success);opacity:0.5;font-size:1.2rem"></i>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="routeBarChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Doughnut: Active vs Maintenance -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Fleet Status</div>
+        <div class="chart-sub">Active vs Under Maintenance</div>
+      </div>
+      <i class="fa-solid fa-chart-donut" style="color:var(--warning);opacity:0.5;font-size:1.2rem"></i>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="statusDonutChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- RECENT BUSES TABLE -->
+<div class="table-card">
+  <div class="table-card-header">
+    <div class="table-card-title">Fleet Overview</div>
+    <a href="{{ url_for('admin_buses') }}" class="btn-outline">
+      <i class="fa-solid fa-arrow-right"></i> Manage
+    </a>
+  </div>
+  {% if buses %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Bus Number</th>
+        <th>Name</th>
+        <th>Capacity</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th>Route</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in buses %}
+      <tr>
+        <td><code style="font-size:0.8rem;color:var(--accent)">{{ b.busNumber }}</code></td>
+        <td>{{ b.name or '—' }}</td>
+        <td>{{ b.capacity }}</td>
+        <td>
+          {% if b.type == 'AC' %}
+            <span class="badge badge-ac"><span class="badge-dot"></span>AC</span>
+          {% else %}
+            <span class="badge badge-nonac"><span class="badge-dot"></span>Non-AC</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if b.status == 'Active' %}
+            <span class="badge badge-active"><span class="badge-dot"></span>Active</span>
+          {% else %}
+            <span class="badge badge-maintenance"><span class="badge-dot"></span>Maintenance</span>
+          {% endif %}
+        </td>
+        <td><span style="color:var(--muted);font-size:0.82rem">{{ b.currentRouteId or '—' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state"><i class="fa-solid fa-bus-simple"></i>No buses found.</div>
+  {% endif %}
+</div>
+
+<!-- RECENT SCHEDULES TABLE -->
+<div class="table-card">
+  <div class="table-card-header">
+    <div class="table-card-title">Today's Schedules</div>
+    <a href="{{ url_for('admin_schedules') }}" class="btn-outline">
+      <i class="fa-solid fa-arrow-right"></i> Manage
+    </a>
+  </div>
+  {% if schedules %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Bus</th>
+        <th>Route</th>
+        <th>Departure</th>
+        <th>Arrival</th>
+        <th>Days</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schedules %}
+      <tr>
+        <td><code style="font-size:0.8rem;color:var(--accent)">{{ s.busId }}</code></td>
+        <td><code style="font-size:0.8rem;color:var(--primary)">{{ s.routeId }}</code></td>
+        <td>{{ s.departureTime }}</td>
+        <td>{{ s.arrivalTime }}</td>
+        <td><span style="color:var(--muted);font-size:0.82rem">{{ s.days }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state"><i class="fa-solid fa-calendar-xmark"></i>No schedules found.</div>
+  {% endif %}
+</div>
+
+<div style="text-align:right;font-size:0.72rem;color:var(--muted)">
+  Last synced: {{ stats.sync_time }}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+const chartData = {{ chart_data | tojson }};
+
+// ---- Pie: AC vs Non-AC ----
+new Chart(document.getElementById('acPieChart'), {
+  type: 'pie',
+  data: {
+    labels: ['AC', 'Non-AC'],
+    datasets: [{
+      data: [chartData.ac_count, chartData.nonac_count],
+      backgroundColor: ['rgba(6,182,212,0.8)', 'rgba(139,92,246,0.8)'],
+      borderColor: ['#0e182c','#0e182c'],
+      borderWidth: 3,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 16, boxWidth: 12 } }
+    }
+  }
+});
+
+// ---- Bar: Busiest Stops ----
+new Chart(document.getElementById('stopsBarChart'), {
+  type: 'bar',
+  data: {
+    labels: chartData.stop_labels,
+    datasets: [{
+      label: 'Route Count',
+      data: chartData.stop_counts,
+      backgroundColor: 'rgba(6,182,212,0.7)',
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// ---- Bar: Route Distances ----
+new Chart(document.getElementById('routeBarChart'), {
+  type: 'bar',
+  data: {
+    labels: chartData.route_labels,
+    datasets: [{
+      label: 'Distance (km)',
+      data: chartData.route_distances,
+      backgroundColor: 'rgba(16,185,129,0.7)',
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: v => v + ' km' } }
+    }
+  }
+});
+
+// ---- Doughnut: Active vs Maintenance ----
+new Chart(document.getElementById('statusDonutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Active', 'Maintenance'],
+    datasets: [{
+      data: [chartData.active_count, chartData.maint_count],
+      backgroundColor: ['rgba(16,185,129,0.8)', 'rgba(245,158,11,0.8)'],
+      borderColor: ['#0e182c','#0e182c'],
+      borderWidth: 3,
+      cutout: '68%',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { padding: 16, boxWidth: 12 } }
+    }
+  }
+});
+</script>
+{% endblock %}
