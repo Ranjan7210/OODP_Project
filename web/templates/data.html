@@ -58,7 +58,7 @@
                                 <span class="badge-maintenance">Maintenance</span>
                             {% endif %}
                         </td>
-                        <td><a href="#" class="route-link">{{ bus.currentRouteId }}</a></td>
+                        <td><a href="javascript:void(0)" class="route-link" onclick="jumpToRoute('{{ bus.currentRouteId }}')">{{ bus.currentRouteId }}</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -88,8 +88,8 @@
                 </thead>
                 <tbody>
                     {% for route in routes %}
-                    <tr>
-                        <td class="td-mono"><a href="#" class="route-link">{{ route.routeNumber }}</a></td>
+                    <tr id="row-{{ route.routeNumber }}">
+                        <td class="td-mono"><a href="javascript:void(0)" class="route-link" onclick="jumpToRoute('{{ route.routeNumber }}')">{{ route.routeNumber }}</a></td>
                         <td>{{ route.name }}</td>
                         <td>{{ route.startStop }}</td>
                         <td>{{ route.endStop }}</td>
@@ -167,7 +167,7 @@
                     {% for sch in schedules %}
                     <tr>
                         <td class="td-mono">{{ sch.busId }}</td>
-                        <td><a href="#" class="route-link">{{ sch.routeId }}</a></td>
+                        <td><a href="javascript:void(0)" class="route-link" onclick="jumpToRoute('{{ sch.routeId }}')">{{ sch.routeId }}</a></td>
                         <td>{{ sch.departureTime }}</td>
                         <td>{{ sch.arrivalTime }}</td>
                         <td><span class="badge-days">{{ sch.days }}</span></td>
@@ -194,6 +194,30 @@ function switchTab(btn, panelId) {
     // Activate clicked tab
     btn.classList.add('active');
     document.getElementById(panelId).classList.add('active');
+}
+
+function jumpToRoute(routeId) {
+    // 1. Switch to Routes tab if not already there
+    const routesTabBtn = document.querySelector('[data-tab="routes-panel"]');
+    if (routesTabBtn) {
+        switchTab(routesTabBtn, 'routes-panel');
+    }
+
+    // 2. Find and highlight the target row
+    // Small timeout to allow the tab display transition to finish if any
+    setTimeout(() => {
+        const targetRow = document.getElementById('row-' + routeId);
+        if (targetRow) {
+            // Clear previous highlights
+            document.querySelectorAll('.highlight-row').forEach(el => el.classList.remove('highlight-row'));
+            
+            // Scroll to view
+            targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Apply attractive light border highlight
+            targetRow.classList.add('highlight-row');
+        }
+    }, 100);
 }
 </script>
 {% endblock %}
