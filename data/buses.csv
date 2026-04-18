@@ -5,3 +5,4 @@ id,name,busNumber,capacity,type,status,currentRouteId
 4,BEST Bus 4,MH-03-7712,40,Non-AC,Active,R-505
 5,s,idjn,50,AC,Active,R-101
 6,Student User,klnklnflk,56,Non-AC,Active,R-101
+7,vikrant,69,69,AC,Active,R-505
