@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Authority Dashboard{% endblock %} — BEST Transit Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <a href="{{ url_for('admin_dashboard') }}" class="sidebar-brand">
+      <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div>
+        <div class="brand-name">BEST Admin</div>
+        <div class="brand-sub">Authority Portal</div>
+      </div>
+    </a>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Analytics</div>
+      <a href="{{ url_for('admin_dashboard') }}"
+         class="nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+        <i class="fa-solid fa-chart-pie"></i> Dashboard
+      </a>
+
+      <div class="sidebar-section-label">Manage</div>
+      <a href="{{ url_for('admin_buses') }}"
+         class="nav-item {% if request.endpoint == 'admin_buses' %}active{% endif %}">
+        <i class="fa-solid fa-bus"></i> Buses
+      </a>
+      <a href="{{ url_for('admin_routes') }}"
+         class="nav-item {% if request.endpoint == 'admin_routes' %}active{% endif %}">
+        <i class="fa-solid fa-route"></i> Routes
+      </a>
+      <a href="{{ url_for('admin_schedules') }}"
+         class="nav-item {% if request.endpoint == 'admin_schedules' %}active{% endif %}">
+        <i class="fa-solid fa-calendar-days"></i> Schedules
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="{{ url_for('landing') }}">
+        <i class="fa-solid fa-arrow-left"></i> Back to Portal
+      </a>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div>
+        <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+        <div class="topbar-sub">{% block page_sub %}Mumbai BEST Transit — Authority Panel{% endblock %}</div>
+      </div>
+      <div class="topbar-right">
+        <div class="sync-badge">
+          <span class="sync-dot"></span>
+          Live CSV Sync
+        </div>
+        <a href="{{ url_for('citizen_home') }}" class="btn-home">
+          <i class="fa-solid fa-eye"></i> Citizen View
+        </a>
+      </div>
+    </header>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">
+              <i class="fa-solid {% if category == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Page Content -->
+    <div class="page-body">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,107 @@
+{% extends "admin/layout.html" %}
+{% block title %}Schedule Management{% endblock %}
+{% block page_title %}Schedule Management{% endblock %}
+{% block page_sub %}Configure departure and arrival timetables{% endblock %}
+
+{% block content %}
+
+<!-- ADD SCHEDULE FORM -->
+<div class="form-card">
+  <div class="form-card-title">
+    <i class="fa-solid fa-plus" style="color:var(--success);margin-right:8px"></i>
+    Create New Schedule
+  </div>
+  <form method="POST" action="{{ url_for('admin_add_schedule') }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="busId">Bus (Bus Number)</label>
+        <select id="busId" name="busId" required>
+          <option value="">Select bus…</option>
+          {% for b in buses %}
+            <option value="{{ b.busNumber }}">{{ b.busNumber }} — {{ b.name or b.busNumber }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="routeId">Route</label>
+        <select id="routeId" name="routeId" required>
+          <option value="">Select route…</option>
+          {% for r in routes %}
+            <option value="{{ r.routeNumber }}">{{ r.routeNumber }} — {{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="departureTime">Departure Time</label>
+        <input type="time" id="departureTime" name="departureTime" required />
+      </div>
+      <div class="form-group">
+        <label for="arrivalTime">Arrival Time</label>
+        <input type="time" id="arrivalTime" name="arrivalTime" required />
+      </div>
+      <div class="form-group full">
+        <label for="days">Operating Days</label>
+        <input type="text" id="days" name="days" placeholder="e.g. Mon-Sat, Mon-Sun, Mon-Fri" />
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <button type="submit" class="btn-primary">
+        <i class="fa-solid fa-plus"></i> Add Schedule
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- SCHEDULES TABLE -->
+<div class="table-card">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">All Schedules</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">
+        {{ schedules|length }} schedule{% if schedules|length != 1 %}s{% endif %} active
+      </div>
+    </div>
+  </div>
+
+  {% if schedules %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Bus</th>
+        <th>Route</th>
+        <th>Departure</th>
+        <th>Arrival</th>
+        <th>Days</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schedules %}
+      <tr>
+        <td style="color:var(--muted);font-size:0.78rem">{{ s.id }}</td>
+        <td><code style="font-size:0.82rem;color:var(--accent)">{{ s.busId }}</code></td>
+        <td><code style="font-size:0.82rem;color:var(--primary)">{{ s.routeId }}</code></td>
+        <td>
+          <span style="font-weight:600;font-size:0.9rem">{{ s.departureTime }}</span>
+        </td>
+        <td>
+          <span style="font-weight:600;font-size:0.9rem">{{ s.arrivalTime }}</span>
+        </td>
+        <td>
+          <span style="background:rgba(16,185,129,0.1);color:var(--success);padding:3px 9px;border-radius:999px;font-size:0.73rem;font-weight:600">
+            {{ s.days }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-calendar-xmark"></i>
+      <p>No schedules configured yet. Create the first schedule above.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

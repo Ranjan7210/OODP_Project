@@ -1,0 +1,88 @@
+{% extends "citizen/layout.html" %}
+{% block title %}Schedules{% endblock %}
+
+{% block content %}
+<div class="citizen-wrapper">
+
+  <div class="section-title">Bus Schedules</div>
+  <div class="section-sub">View all departure and arrival times across the Mumbai BEST network</div>
+
+  {% if schedules %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Bus Number</th>
+          <th>Route</th>
+          <th>Departure</th>
+          <th>Arrival</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Days</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in schedules %}
+        <tr>
+          <td>
+            <code style="font-weight:700;font-size:0.85rem;color:#0f172a">{{ s.busId }}</code>
+          </td>
+          <td>
+            <div style="font-weight:600;font-size:0.88rem;color:#0f172a">{{ s.routeName }}</div>
+            <div style="font-size:0.73rem;color:var(--muted);margin-top:2px">
+              <i class="fa-solid fa-circle-dot" style="color:var(--green);font-size:0.6rem;margin-right:3px"></i>{{ s.startStop }}
+              <i class="fa-solid fa-arrow-right" style="color:var(--faint);font-size:0.6rem;margin:0 4px"></i>
+              <i class="fa-solid fa-map-pin" style="color:var(--primary);font-size:0.6rem;margin-right:3px"></i>{{ s.endStop }}
+            </div>
+          </td>
+          <td>
+            <span style="font-size:1.05rem;font-weight:800;color:var(--primary)">
+              {{ s.departureTime }}
+            </span>
+          </td>
+          <td>
+            <span style="font-size:1.05rem;font-weight:800;color:#475569">
+              {{ s.arrivalTime }}
+            </span>
+          </td>
+          <td>
+            {% if s.busType == 'AC' %}
+              <span class="badge badge-ac"><span class="badge-dot"></span>AC</span>
+            {% else %}
+              <span class="badge badge-nonac"><span class="badge-dot"></span>Non-AC</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.busStatus == 'Active' %}
+              <span class="badge badge-active"><span class="badge-dot"></span>Active</span>
+            {% else %}
+              <span class="badge badge-maintenance"><span class="badge-dot"></span>Maintenance</span>
+            {% endif %}
+          </td>
+          <td>
+            <span style="font-size:0.78rem;color:var(--muted);font-weight:500">{{ s.days }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-calendar-xmark"></i>
+      <p>No schedules are currently available.</p>
+    </div>
+  {% endif %}
+
+  <!-- Info Box -->
+  <div style="background:rgba(14,165,233,0.07);border:1px solid rgba(14,165,233,0.2);border-radius:12px;padding:16px 20px;margin-top:8px;display:flex;gap:14px;align-items:flex-start;">
+    <i class="fa-solid fa-circle-info" style="color:var(--primary);margin-top:2px;font-size:1rem"></i>
+    <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin:0">
+      <strong style="color:var(--text)">Note:</strong>
+      Times shown are standard scheduled times. Actual arrivals may vary depending on traffic conditions.
+      Buses marked as "Maintenance" are temporarily out of service.
+    </p>
+  </div>
+
+</div>
+{% endblock %}

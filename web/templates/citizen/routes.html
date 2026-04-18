@@ -1,0 +1,99 @@
+{% extends "citizen/layout.html" %}
+{% block title %}Routes{% endblock %}
+
+{% block content %}
+<div class="citizen-wrapper">
+
+  <div class="section-title">Bus Routes</div>
+  <div class="section-sub">Search and explore all routes across the Mumbai BEST network</div>
+
+  <!-- SEARCH BAR -->
+  <form method="GET" action="{{ url_for('citizen_routes') }}" class="search-bar">
+    <div class="search-input-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input
+        type="text"
+        name="q"
+        value="{{ query }}"
+        placeholder="Search by route number, name, or stop…"
+        autocomplete="off"
+      />
+    </div>
+    <button type="submit" class="btn-search">
+      <i class="fa-solid fa-magnifying-glass"></i> Search
+    </button>
+  </form>
+
+  {% if query %}
+    <div style="font-size:0.82rem;color:var(--muted);margin-bottom:16px">
+      {% if routes %}
+        Showing <strong>{{ routes|length }}</strong> result{% if routes|length != 1 %}s{% endif %} for
+        "<strong>{{ query }}</strong>"
+        — <a href="{{ url_for('citizen_routes') }}" style="color:var(--primary)">Clear</a>
+      {% else %}
+        No routes found for "<strong>{{ query }}</strong>"
+        — <a href="{{ url_for('citizen_routes') }}" style="color:var(--primary)">Clear search</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- ROUTES LIST -->
+  {% if routes %}
+  <div class="route-list">
+    {% for r in routes %}
+    <div class="route-card">
+      <!-- Route Number Badge -->
+      <div class="route-number-badge">{{ r.routeNumber }}</div>
+
+      <!-- Route Info -->
+      <div>
+        <div class="route-name">{{ r.name }}</div>
+
+        <!-- Endpoints -->
+        <div class="route-endpoints">
+          <i class="fa-solid fa-circle-dot" style="color:var(--green);font-size:0.7rem"></i>
+          <span>{{ r.startStop }}</span>
+          <i class="fa-solid fa-arrow-right" style="font-size:0.65rem;color:var(--faint)"></i>
+          <i class="fa-solid fa-map-pin" style="color:var(--primary);font-size:0.7rem"></i>
+          <span>{{ r.endStop }}</span>
+        </div>
+
+        <!-- Stop Chips -->
+        {% if r.stop_list %}
+        <div style="margin-top:8px">
+          {% for stop in r.stop_list %}
+            <span class="stop-chip">
+              <i class="fa-solid fa-bus" style="font-size:0.6rem"></i>
+              {{ stop }}
+            </span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Distance -->
+      <div class="route-meta">
+        <div class="route-dist">{{ r.totalDistance }}</div>
+        <div class="route-dist-label">km total</div>
+        <div style="margin-top:8px;font-size:0.73rem;color:var(--muted)">
+          <i class="fa-solid fa-map-pin" style="margin-right:3px"></i>
+          {{ r.stop_list|length }} stops
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-route"></i>
+      {% if query %}
+        <p>No routes match your search. Try a different term.</p>
+      {% else %}
+        <p>No routes are currently available in the system.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
