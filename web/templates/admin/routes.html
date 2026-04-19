@@ -5,6 +5,79 @@
 
 {% block content %}
 
+<!-- ===== CSV UPLOAD STYLES ===== -->
+<style>
+  .btn-upload-csv {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    color: #fff;
+    transition: opacity .2s, transform .15s;
+    white-space: nowrap;
+  }
+  .btn-upload-csv:hover   { opacity: .88; transform: translateY(-1px); }
+  .btn-upload-csv:active  { transform: translateY(0); }
+  .btn-upload-csv:disabled { opacity: .5; cursor: not-allowed; }
+
+  #csv-toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 9999;
+    min-width: 300px;
+    max-width: 440px;
+    background: #1e1e2e;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    color: #e2e8f0;
+    font-size: 0.88rem;
+    display: none;
+    animation: slideUp .3s ease;
+  }
+  #csv-toast.show  { display: block; }
+  #csv-toast .toast-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+  #csv-toast .toast-icon          { font-size: 1.1rem; }
+  #csv-toast.success .toast-icon  { color: #10b981; }
+  #csv-toast.error   .toast-icon  { color: #ef4444; }
+  #csv-toast .toast-errors {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: #f59e0b;
+    max-height: 90px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+  #csv-toast .toast-close {
+    position: absolute;
+    top: 10px; right: 14px;
+    background: none; border: none;
+    color: #94a3b8; cursor: pointer;
+    font-size: 1rem;
+  }
+  @keyframes spin    { to { transform: rotate(360deg); } }
+  @keyframes slideUp {
+    from { opacity:0; transform: translateY(20px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .fa-spin-custom { animation: spin .8s linear infinite; }
+</style>
+
 <!-- ADD ROUTE FORM -->
 <div class="form-card">
   <div class="form-card-title">
@@ -59,6 +132,13 @@
         {{ routes|length }} route{% if routes|length != 1 %}s{% endif %} configured
       </div>
     </div>
+    <!-- ===== UPLOAD BUTTON ===== -->
+    <div style="display:flex;align-items:center;gap:10px;">
+      <input type="file" id="csvFileInput" accept=".csv" style="display:none" />
+      <button class="btn-upload-csv" id="uploadCsvBtn" onclick="document.getElementById('csvFileInput').click()">
+        <i class="fa-solid fa-file-arrow-up"></i> Upload CSV
+      </button>
+    </div>
   </div>
 
   {% if routes %}
@@ -101,4 +181,84 @@
   {% endif %}
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<!-- ===== Toast element ===== -->
+<div id="csv-toast">
+  <button class="toast-close" onclick="closeToast()">&times;</button>
+  <div class="toast-header">
+    <span class="toast-icon">
+      <i class="fa-solid fa-circle-check"  id="toast-icon-ok"></i>
+      <i class="fa-solid fa-circle-xmark" id="toast-icon-err" style="display:none"></i>
+    </span>
+    <span id="toast-title">Uploading&hellip;</span>
+  </div>
+  <div id="toast-body"></div>
+  <div class="toast-errors" id="toast-errors"></div>
+</div>
+
+<!-- ===== CSV Upload Script ===== -->
+<script>
+(function () {
+  const input  = document.getElementById('csvFileInput');
+  const btn    = document.getElementById('uploadCsvBtn');
+  const toast  = document.getElementById('csv-toast');
+  let toastTimer = null;
+
+  btn.title = 'Upload a CSV with columns: name, routeNumber, startStop, endStop, totalDistance, stops (semicolon-separated)';
+
+  input.addEventListener('change', function () {
+    if (!this.files || !this.files[0]) return;
+    uploadFile(this.files[0]);
+    this.value = '';
+  });
+
+  function uploadFile(file) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin-custom"></i> Uploading&hellip;';
+    showToast('info', 'Uploading…', `Processing <strong>${file.name}</strong>…`, []);
+
+    const formData = new FormData();
+    formData.append('csv_file', file);
+
+    fetch('/admin/upload_routes', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-file-arrow-up"></i> Upload CSV';
+        if (data.success) {
+          showToast('success', 'Import Complete', data.message, data.errors || []);
+          setTimeout(() => location.reload(), 2000);
+        } else {
+          showToast('error', 'Upload Failed', data.message, []);
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-file-arrow-up"></i> Upload CSV';
+        showToast('error', 'Network Error', err.toString(), []);
+      });
+  }
+
+  function showToast(type, title, body, errors) {
+    clearTimeout(toastTimer);
+    toast.className = 'show ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : '');
+    document.getElementById('toast-title').textContent = title;
+    document.getElementById('toast-body').innerHTML = body;
+    document.getElementById('toast-icon-ok').style.display  = (type === 'success') ? '' : 'none';
+    document.getElementById('toast-icon-err').style.display = (type === 'error')   ? '' : 'none';
+    const errBox = document.getElementById('toast-errors');
+    errBox.innerHTML = errors.length
+      ? errors.map(e => `<div>⚠ ${e}</div>`).join('')
+      : '';
+    if (type !== 'info') toastTimer = setTimeout(closeToast, 6000);
+  }
+
+  window.closeToast = function () {
+    toast.className = '';
+    clearTimeout(toastTimer);
+  };
+}());
+</script>
 {% endblock %}
