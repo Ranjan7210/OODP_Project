@@ -16,3 +16,9 @@ build/
 .idea/
 .DS_Store
 oodp_system
+
+# Live CSV data — excluded to avoid committing bus/route/schedule records
+data/
+
+# Sample test CSVs — local use only
+sample_csvs/

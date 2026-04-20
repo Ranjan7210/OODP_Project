@@ -390,6 +390,159 @@ def admin_add_bus():
     return redirect(url_for('admin_buses'))
 
 
+@app.route('/admin/upload_buses', methods=['POST'])
+def admin_upload_buses():
+    """Bulk-import buses from an uploaded CSV file."""
+    if 'csv_file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded.'}), 400
+
+    file = request.files['csv_file']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'message': 'Empty file name.'}), 400
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'success': False, 'message': 'Only CSV files are accepted.'}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Could not read file: {e}'}), 400
+
+    import io
+    reader = csv.DictReader(io.StringIO(content))
+
+    existing_buses = read_buses()
+    existing_numbers = {b.get('busNumber', '').strip().upper() for b in existing_buses}
+    start_id = next_id(existing_buses)
+
+    added = 0
+    skipped = 0
+    errors = []
+
+    # Normalise header names (strip whitespace)
+    fieldnames_required = {'busNumber'}
+    allowed_fields = {'id', 'name', 'busNumber', 'capacity', 'type', 'status', 'currentRouteId'}
+
+    for i, row in enumerate(reader, start=1):
+        # Strip whitespace from keys and values
+        row = {k.strip(): v.strip() for k, v in row.items() if k}
+
+        bus_num = row.get('busNumber', '').strip()
+        if not bus_num:
+            errors.append(f'Row {i}: missing busNumber — skipped.')
+            skipped += 1
+            continue
+
+        if bus_num.upper() in existing_numbers:
+            errors.append(f'Row {i}: {bus_num} already exists — skipped.')
+            skipped += 1
+            continue
+
+        try:
+            cap = int(row.get('capacity', 0))
+        except (ValueError, TypeError):
+            cap = 0
+
+        bus = {
+            'id': start_id,
+            'name': row.get('name', f'Bus {bus_num}'),
+            'busNumber': bus_num,
+            'capacity': cap,
+            'type': row.get('type', 'Non-AC') if row.get('type', 'Non-AC') in ('AC', 'Non-AC') else 'Non-AC',
+            'status': row.get('status', 'Active') if row.get('status', 'Active') in ('Active', 'Maintenance') else 'Active',
+            'currentRouteId': row.get('currentRouteId', ''),
+        }
+        append_bus(bus)
+        existing_numbers.add(bus_num.upper())
+        start_id += 1
+        added += 1
+
+    message = f'{added} bus(es) added successfully.'
+    if skipped:
+        message += f' {skipped} row(s) skipped.'
+
+    return jsonify({
+        'success': True,
+        'added': added,
+        'skipped': skipped,
+        'message': message,
+        'errors': errors
+    })
+
+
+@app.route('/admin/upload_routes', methods=['POST'])
+def admin_upload_routes():
+    """Bulk-import routes from an uploaded CSV file."""
+    if 'csv_file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded.'}), 400
+
+    file = request.files['csv_file']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'message': 'Empty file name.'}), 400
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'success': False, 'message': 'Only CSV files are accepted.'}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Could not read file: {e}'}), 400
+
+    import io
+    reader = csv.DictReader(io.StringIO(content))
+
+    existing_routes = read_routes()
+    existing_numbers = {r.get('routeNumber', '').strip().upper() for r in existing_routes}
+    start_id = next_id(existing_routes)
+
+    added = 0
+    skipped = 0
+    errors = []
+
+    for i, row in enumerate(reader, start=1):
+        row = {k.strip(): v.strip() for k, v in row.items() if k}
+
+        route_num = row.get('routeNumber', '').strip()
+        if not route_num:
+            errors.append(f'Row {i}: missing routeNumber — skipped.')
+            skipped += 1
+            continue
+
+        if route_num.upper() in existing_numbers:
+            errors.append(f'Row {i}: {route_num} already exists — skipped.')
+            skipped += 1
+            continue
+
+        try:
+            dist = float(row.get('totalDistance', 0))
+        except (ValueError, TypeError):
+            dist = 0.0
+
+        route = {
+            'id': start_id,
+            'name': row.get('name', f'Route {route_num}'),
+            'routeNumber': route_num,
+            'startStop': row.get('startStop', ''),
+            'endStop': row.get('endStop', ''),
+            'totalDistance': dist,
+            'stops': row.get('stops', ''),
+        }
+        append_route(route)
+        existing_numbers.add(route_num.upper())
+        start_id += 1
+        added += 1
+
+    message = f'{added} route(s) added successfully.'
+    if skipped:
+        message += f' {skipped} row(s) skipped.'
+
+    return jsonify({
+        'success': True,
+        'added': added,
+        'skipped': skipped,
+        'message': message,
+        'errors': errors
+    })
+
+
 @app.route('/admin/routes')
 def admin_routes():
     routes = read_routes()
@@ -450,6 +603,81 @@ def admin_add_schedule():
     append_schedule(sched)
     flash('Schedule added successfully!', 'success')
     return redirect(url_for('admin_schedules'))
+
+
+@app.route('/admin/upload_schedules', methods=['POST'])
+def admin_upload_schedules():
+    """Bulk-import schedules from an uploaded CSV file."""
+    if 'csv_file' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded.'}), 400
+
+    file = request.files['csv_file']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'message': 'Empty file name.'}), 400
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'success': False, 'message': 'Only CSV files are accepted.'}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Could not read file: {e}'}), 400
+
+    import io
+    reader = csv.DictReader(io.StringIO(content))
+
+    existing_schedules = read_schedules()
+    start_id = next_id(existing_schedules)
+
+    added   = 0
+    skipped = 0
+    errors  = []
+
+    for i, row in enumerate(reader, start=1):
+        row = {k.strip(): v.strip() for k, v in row.items() if k}
+
+        bus_id   = row.get('busId', '').strip()
+        route_id = row.get('routeId', '').strip()
+
+        if not bus_id:
+            errors.append(f'Row {i}: missing busId — skipped.')
+            skipped += 1
+            continue
+        if not route_id:
+            errors.append(f'Row {i}: missing routeId — skipped.')
+            skipped += 1
+            continue
+
+        dep = row.get('departureTime', '').strip()
+        arr = row.get('arrivalTime', '').strip()
+
+        if not dep or not arr:
+            errors.append(f'Row {i}: missing departureTime or arrivalTime — skipped.')
+            skipped += 1
+            continue
+
+        sched = {
+            'id': start_id,
+            'busId': bus_id,
+            'routeId': route_id,
+            'departureTime': dep,
+            'arrivalTime': arr,
+            'days': row.get('days', 'Daily').strip() or 'Daily',
+        }
+        append_schedule(sched)
+        start_id += 1
+        added += 1
+
+    message = f'{added} schedule(s) added successfully.'
+    if skipped:
+        message += f' {skipped} row(s) skipped.'
+
+    return jsonify({
+        'success': True,
+        'added': added,
+        'skipped': skipped,
+        'message': message,
+        'errors': errors
+    })
 
 
 # ============================================================
