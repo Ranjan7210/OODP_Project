@@ -1,450 +1,147 @@
-/**
- * =============================================================================
- * FILE        : classes.cpp
- * PROJECT     : Bus Route Management System — Mumbai BEST
- * AUTHOR      : Member 1 (OOP Architect)
- * DESCRIPTION : Implementations of all methods declared in classes.h.
- *               Contains constructors, virtual overrides, getters, setters,
- *               CSV serialisation, and the Haversine distance formula.
- * =============================================================================
- */
+#include "classes.h" // Include header to see class definitions
+#include <iomanip>   // Standard library for formatting output (like precision)
+#include <iostream>  // Standard library for printing to screen
+#include <sstream>   // Standard library for building strings
+#include <cmath>     // Standard library for math functions
 
-#include "classes.h"
-#include <iomanip>
-#include <iostream>
+using namespace std; // Use standard namespace for shortcut
 
-using namespace std;
+// =============================================================================
+//  TRANSPORT ENTITY - Implementation
+// =============================================================================
+
+TransportEntity::TransportEntity() : id(0), name("") {} // Default constructor: sets ID to 0 and Name to empty
+
+TransportEntity::TransportEntity(int id, string name) : id(id), name(name) {} // Parameter constructor: sets values
+
+TransportEntity::~TransportEntity() {} // Virtual destructor: does nothing but is needed for safe inheritance
+
+int TransportEntity::getId() const { return id; } // Returns the object's ID
+
+string TransportEntity::getName() const { return name; } // Returns the object's Name
+
+void TransportEntity::setId(int newId) { id = newId; } // Changes the object's ID
+
+void TransportEntity::setName(string newName) { name = newName; } // Changes the object's Name
 
 
 // =============================================================================
-//  TransportEntity — Abstract Base Class Implementation
+//  BUS - Implementation
 // =============================================================================
 
-/**
- * Default constructor.
- * Initialises id = 0 and name = "" — safe default state before setters
- * are called or data is loaded from CSV.
- */
-TransportEntity::TransportEntity()
-    : id(0), name("") {}
+Bus::Bus() : TransportEntity(), busNumber(""), capacity(0), type("Non-AC"), status("Active"), currentRouteId("") {} // Default constructor with defaults
 
-/**
- * Parameterised constructor.
- * @param id    Unique numeric identifier.
- * @param name  Human-readable display name.
- */
-TransportEntity::TransportEntity(int id, const string& name)
-    : id(id), name(name) {}
+Bus::Bus(int id, string name, string busNum, int cap, string t, string s, string rId) // Parameter constructor
+    : TransportEntity(id, name), busNumber(busNum), capacity(cap), type(t), status(s), currentRouteId(rId) {} // Call base and set fields
 
-/**
- * Virtual destructor — defined out-of-line to ensure the vtable is anchored
- * in this translation unit and to allow safe polymorphic deletion via a
- * TransportEntity* pointer.
- */
-TransportEntity::~TransportEntity() {}
+void Bus::getInfo() const { // Shows bus data on screen
+    cout << "--- BUS INFO ---" << endl; // Title
+    cout << "ID: " << id << " | Name: " << name << endl; // ID and Name
+    cout << "Number: " << busNumber << " | Cap: " << capacity << endl; // Plate and Capacity
+    cout << "Type: " << type << " | Status: " << status << endl; // AC/Non-AC and Status
+    cout << "Route: " << currentRouteId << endl; // Route field
+}
 
-// ── Getters ──────────────────────────────────────────────────────────────────
-int    TransportEntity::getId()   const { return id;   }
-string TransportEntity::getName() const { return name; }
+double Bus::calculateMetric() const { return (double)capacity; } // KPI for bus is its seating capacity
 
-// ── Setters ──────────────────────────────────────────────────────────────────
-void TransportEntity::setId(int newId)             { id   = newId;   }
-void TransportEntity::setName(const string& newName) { name = newName; }
+string Bus::toCSV() const { // Formats data for a CSV file
+    return to_string(id) + "," + name + "," + busNumber + "," + to_string(capacity) + "," + type + "," + status + "," + currentRouteId; // Comma-separated list
+}
+
+string Bus::getBusNumber() const { return busNumber; } // Returns plate number
+
+string Bus::getStatus() const { return status; } // Returns current status
+
+void Bus::setStatus(string s) { status = s; } // Changes status
 
 
 // =============================================================================
-//  Bus — Concrete Derived Class Implementation
+//  STOP - Implementation
 // =============================================================================
 
-/**
- * Default constructor.
- * Delegates to TransportEntity() and sets sensible defaults:
- * capacity = 0, type = "Non-AC", status = "Active".
- */
-Bus::Bus()
-    : TransportEntity(),
-      busNumber(""),
-      capacity(0),
-      type("Non-AC"),
-      status("Active"),
-      currentRouteId("") {}
+Stop::Stop() : TransportEntity(), stopCode(""), landmark(""), latitude(0.0), longitude(0.0) {} // Default constructor
 
-/**
- * Parameterised constructor — used by seedSampleData() and CSV loader.
- */
-Bus::Bus(int id, const string& name, const string& busNumber, int capacity,
-         const string& type, const string& status, const string& currentRouteId)
-    : TransportEntity(id, name),
-      busNumber(busNumber),
-      capacity(capacity),
-      type(type),
-      status(status),
-      currentRouteId(currentRouteId) {}
+Stop::Stop(int id, string name, string code, string land, double lat, double lon) // Parameter constructor
+    : TransportEntity(id, name), stopCode(code), landmark(land), latitude(lat), longitude(lon) {} // Set fields
 
-// ── Override: getInfo() ───────────────────────────────────────────────────────
-/**
- * Prints a formatted information block for this bus to stdout.
- * Called via a TransportEntity* pointer in the Reports module to demonstrate
- * runtime polymorphism.
- */
-void Bus::getInfo() const {
-    cout << "========================================" << endl;
-    cout << "  BUS INFORMATION"                        << endl;
-    cout << "========================================" << endl;
-    cout << "  ID          : " << id            << endl;
-    cout << "  Name        : " << name          << endl;
-    cout << "  Bus Number  : " << busNumber     << endl;
-    cout << "  Capacity    : " << capacity      << " seats" << endl;
-    cout << "  Type        : " << type          << endl;
-    cout << "  Status      : " << status        << endl;
-    cout << "  Route ID    : " << currentRouteId << endl;
-    cout << "========================================" << endl;
+void Stop::getInfo() const { // Shows stop data
+    cout << "--- STOP INFO ---" << endl; // Title
+    cout << "ID: " << id << " | Name: " << name << " | Code: " << stopCode << endl; // Major fields
+    cout << "Landmark: " << landmark << endl; // Nearby place
+    cout << "Location: (" << latitude << ", " << longitude << ")" << endl; // Coordinates
 }
 
-// ── Override: calculateMetric() ──────────────────────────────────────────────
-/**
- * Returns the bus seat capacity as a double.
- * Used in fleet-capacity bar charts (Member 4) and the Reports screen.
- */
-double Bus::calculateMetric() const {
-    return static_cast<double>(capacity);
+double Stop::calculateMetric() const { return 1.0; } // Default metric for a stop is just 1 unit
+
+double Stop::distanceTo(const Stop& other) const { // Simplified distance formula for beginners
+    double dLat = abs(latitude - other.latitude); // Difference in latitude
+    double dLon = abs(longitude - other.longitude); // Difference in longitude
+    return (dLat + dLon) * 111.0; // Very rough km conversion (1 degree approx 111km)
 }
 
-// ── CSV Serialisation ─────────────────────────────────────────────────────────
-/**
- * Serialises all Bus fields as a single comma-separated line.
- * Matches the header: id,name,busNumber,capacity,type,status,currentRouteId
- */
-string Bus::toCSV() const {
-    return to_string(id) + "," +
-           name          + "," +
-           busNumber     + "," +
-           to_string(capacity) + "," +
-           type          + "," +
-           status        + "," +
-           currentRouteId;
+string Stop::toCSV() const { // Formats for CSV file
+    stringstream ss; // Use stringstream to handle decimal numbers
+    ss << id << "," << name << "," << stopCode << "," << landmark << "," << latitude << "," << longitude; // Build the string
+    return ss.str(); // Return completed string
 }
 
-// ── Getters ──────────────────────────────────────────────────────────────────
-string Bus::getBusNumber()      const { return busNumber;      }
-int    Bus::getCapacity()       const { return capacity;       }
-string Bus::getType()           const { return type;           }
-string Bus::getStatus()         const { return status;         }
-string Bus::getCurrentRouteId() const { return currentRouteId; }
-
-// ── Setters ──────────────────────────────────────────────────────────────────
-void Bus::setBusNumber(const string& bn)      { busNumber      = bn;  }
-void Bus::setCapacity(int cap)                { capacity       = cap; }
-void Bus::setType(const string& t)            { type           = t;   }
-void Bus::setStatus(const string& s)          { status         = s;   }
-void Bus::setCurrentRouteId(const string& rid){ currentRouteId = rid; }
+string Stop::getStopCode() const { return stopCode; } // Returns stop code
 
 
 // =============================================================================
-//  Stop — Concrete Derived Class Implementation
+//  ROUTE - Implementation
 // =============================================================================
 
-/**
- * Default constructor.
- * Delegates to TransportEntity() and initialises numeric fields to 0.
- */
-Stop::Stop()
-    : TransportEntity(),
-      stopCode(""),
-      landmark(""),
-      latitude(0.0),
-      longitude(0.0),
-      routeCount(0) {}
+Route::Route() : TransportEntity(), routeNumber(""), startStop(""), endStop(""), totalDistance(0.0) {} // Default constructor
 
-/**
- * Parameterised constructor — used by seedSampleData() and CSV loader.
- */
-Stop::Stop(int id, const string& name, const string& stopCode,
-           const string& landmark, double latitude, double longitude,
-           int routeCount)
-    : TransportEntity(id, name),
-      stopCode(stopCode),
-      landmark(landmark),
-      latitude(latitude),
-      longitude(longitude),
-      routeCount(routeCount) {}
+Route::Route(int id, string name, string num, string start, string end, double dist, vector<string> stops) // Parameter constructor
+    : TransportEntity(id, name), routeNumber(num), startStop(start), endStop(end), totalDistance(dist), stopList(stops) {} // Build the route
 
-// ── Override: getInfo() ───────────────────────────────────────────────────────
-/**
- * Prints a formatted information block for this stop to stdout.
- * Latitude and longitude are shown with 6 decimal places for GPS precision.
- */
-void Stop::getInfo() const {
-    cout << "========================================" << endl;
-    cout << "  STOP INFORMATION"                       << endl;
-    cout << "========================================" << endl;
-    cout << "  ID          : " << id         << endl;
-    cout << "  Name        : " << name       << endl;
-    cout << "  Stop Code   : " << stopCode   << endl;
-    cout << "  Landmark    : " << landmark   << endl;
-    cout << fixed << setprecision(6);
-    cout << "  Latitude    : " << latitude   << endl;
-    cout << "  Longitude   : " << longitude  << endl;
-    cout << "  Route Count : " << routeCount << endl;
-    cout << "========================================" << endl;
+void Route::getInfo() const { // Shows route details
+    cout << "--- ROUTE INFO ---" << endl; // Title
+    cout << "ID: " << id << " | Name: " << name << " | No: " << routeNumber << endl; // Major fields
+    cout << "From: " << startStop << " To: " << endStop << endl; // Start/End
+    cout << "Distance: " << totalDistance << " km" << endl; // Length
+    cout << "Stops: "; // Header for stop list
+    for(int i=0; i < (int)stopList.size(); i++) cout << stopList[i] << (i == (int)stopList.size()-1 ? "" : " -> "); // Print list with arrows
+    cout << endl; // New line
 }
 
-// ── Override: calculateMetric() ──────────────────────────────────────────────
-/**
- * Returns the number of routes serving this stop as a double.
- * Used in hub-priority bar charts (Member 4) and the Reports screen.
- */
-double Stop::calculateMetric() const {
-    return static_cast<double>(routeCount);
+double Route::calculateMetric() const { return totalDistance; } // KPI for route is its length
+
+string Route::toCSV() const { // Formats for CSV
+    stringstream ss; // Use stream for decimals and complex lists
+    ss << id << "," << name << "," << routeNumber << "," << startStop << "," << endStop << "," << totalDistance << ","; // Basic fields
+    for(int i=0; i < (int)stopList.size(); i++) ss << stopList[i] << (i == (int)stopList.size()-1 ? "" : ";"); // Semicolon-separated stops
+    return ss.str(); // Return string
 }
 
-// ── Haversine Distance ────────────────────────────────────────────────────────
-/**
- * Computes the great-circle distance (in km) between this stop and `other`
- * using the Haversine formula.
- *
- * Haversine Formula:
- *   a = sin²((lat2-lat1)/2) + cos(lat1)·cos(lat2)·sin²((lon2-lon1)/2)
- *   c = 2·atan2(√a, √(1−a))
- *   d = R · c   where R = 6371.0 km
- *
- * @param other  The destination Stop.
- * @return Distance in kilometres.
- */
-double Stop::distanceTo(const Stop& other) const {
-    const double R  = 6371.0;                        // Earth's mean radius, km
-    const double PI = 3.14159265358979323846;
+string Route::getRouteNumber() const { return routeNumber; } // Get route No
 
-    double lat1  = latitude        * PI / 180.0;
-    double lat2  = other.latitude  * PI / 180.0;
-    double dLat  = (other.latitude  - latitude)  * PI / 180.0;
-    double dLon  = (other.longitude - longitude) * PI / 180.0;
-
-    double a = sin(dLat / 2.0) * sin(dLat / 2.0) +
-               cos(lat1) * cos(lat2) *
-               sin(dLon / 2.0) * sin(dLon / 2.0);
-
-    double c = 2.0 * atan2(sqrt(a), sqrt(1.0 - a));
-
-    return R * c;
-}
-
-// ── CSV Serialisation ─────────────────────────────────────────────────────────
-/**
- * Serialises all Stop fields as a single comma-separated line.
- * lat/lon are written with 6 decimal places to preserve GPS accuracy.
- * Matches header: id,name,stopCode,landmark,latitude,longitude,routeCount
- */
-string Stop::toCSV() const {
-    ostringstream oss;
-    oss << id        << ","
-        << name      << ","
-        << stopCode  << ","
-        << landmark  << ","
-        << fixed << setprecision(6) << latitude  << ","
-        << fixed << setprecision(6) << longitude << ","
-        << routeCount;
-    return oss.str();
-}
-
-// ── Getters ──────────────────────────────────────────────────────────────────
-string Stop::getStopCode()   const { return stopCode;   }
-string Stop::getLandmark()   const { return landmark;   }
-double Stop::getLatitude()   const { return latitude;   }
-double Stop::getLongitude()  const { return longitude;  }
-int    Stop::getRouteCount() const { return routeCount; }
-
-// ── Setters ──────────────────────────────────────────────────────────────────
-void Stop::setStopCode(const string& sc)  { stopCode   = sc;  }
-void Stop::setLandmark(const string& lm)  { landmark   = lm;  }
-void Stop::setLatitude(double lat)        { latitude   = lat; }
-void Stop::setLongitude(double lon)       { longitude  = lon; }
-void Stop::setRouteCount(int rc)          { routeCount = rc;  }
+vector<string> Route::getStopList() const { return stopList; } // Get the stops
 
 
 // =============================================================================
-//  Route — Concrete Derived Class Implementation
+//  SCHEDULE - Implementation
 // =============================================================================
 
-/**
- * Default constructor.
- * Delegates to TransportEntity(); totalDistance = 0 and stopList is empty.
- */
-Route::Route()
-    : TransportEntity(),
-      routeNumber(""),
-      startStop(""),
-      endStop(""),
-      totalDistance(0.0) {}
+Schedule::Schedule() : id(0), busId(""), routeId(""), departureTime(""), arrivalTime(""), days("") {} // Default constructor
 
-/**
- * Parameterised constructor — used by seedSampleData() and CSV loader.
- */
-Route::Route(int id, const string& name, const string& routeNumber,
-             const string& startStop, const string& endStop,
-             double totalDistance, const vector<string>& stopList)
-    : TransportEntity(id, name),
-      routeNumber(routeNumber),
-      startStop(startStop),
-      endStop(endStop),
-      totalDistance(totalDistance),
-      stopList(stopList) {}
+Schedule::Schedule(int id, string bId, string rId, string dep, string arr, string d) // Main constructor
+    : id(id), busId(bId), routeId(rId), departureTime(dep), arrivalTime(arr), days(d) {} // Assign values
 
-// ── Override: getInfo() ───────────────────────────────────────────────────────
-/**
- * Prints a formatted information block for this route to stdout.
- * The stop list is rendered as:  Stop1 -> Stop2 -> Stop3 ...
- */
-void Route::getInfo() const {
-    cout << "========================================" << endl;
-    cout << "  ROUTE INFORMATION"                      << endl;
-    cout << "========================================" << endl;
-    cout << "  ID             : " << id            << endl;
-    cout << "  Name           : " << name          << endl;
-    cout << "  Route Number   : " << routeNumber   << endl;
-    cout << "  Start Stop     : " << startStop     << endl;
-    cout << "  End Stop       : " << endStop       << endl;
-    cout << fixed << setprecision(2);
-    cout << "  Total Distance : " << totalDistance << " km" << endl;
-    cout << "  No. of Stops   : " << stopList.size() << endl;
-    cout << "  Stops          : ";
-    for (size_t i = 0; i < stopList.size(); ++i) {
-        cout << stopList[i];
-        if (i < stopList.size() - 1) cout << " -> ";
-    }
-    cout << endl;
-    cout << "========================================" << endl;
+void Schedule::getInfo() const { // Shows schedule data
+    cout << "--- SCHEDULE INFO ---" << endl; // Title
+    cout << "ID: " << id << " | Bus: " << busId << " | Route: " << routeId << endl; // IDs
+    cout << "Dep: " << departureTime << " | Arr: " << arrivalTime << " | Days: " << days << endl; // Times
 }
 
-// ── Override: calculateMetric() ──────────────────────────────────────────────
-/**
- * Returns the total route distance in kilometres.
- * Used in network-coverage bar charts (Member 4) and the Reports screen.
- */
-double Route::calculateMetric() const {
-    return totalDistance;
+string Schedule::toCSV() const { // Formats for CSV
+    return to_string(id) + "," + busId + "," + routeId + "," + departureTime + "," + arrivalTime + "," + days; // CSV Line
 }
 
-// ── Utility: getStopCount() ───────────────────────────────────────────────────
-/**
- * Returns the number of stops on this route as an int.
- * Convenience wrapper around stopList.size().
- */
-int Route::getStopCount() const {
-    return static_cast<int>(stopList.size());
-}
+int Schedule::getId() const { return id; } // Get ID
 
-// ── CSV Serialisation ─────────────────────────────────────────────────────────
-/**
- * Serialises all Route fields as a single comma-separated line.
- * The stopList is stored as semicolon-separated values within column 7,
- * avoiding conflicts with the CSV comma delimiter.
- *
- * Matches header: id,name,routeNumber,startStop,endStop,totalDistance,stops
- */
-string Route::toCSV() const {
-    ostringstream oss;
-    oss << id            << ","
-        << name          << ","
-        << routeNumber   << ","
-        << startStop     << ","
-        << endStop       << ","
-        << fixed << setprecision(2) << totalDistance << ",";
-    for (size_t i = 0; i < stopList.size(); ++i) {
-        oss << stopList[i];
-        if (i < stopList.size() - 1) oss << ";";
-    }
-    return oss.str();
-}
+string Schedule::getBusId() const { return busId; } // Get Bus Plate
 
-// ── Getters ──────────────────────────────────────────────────────────────────
-string         Route::getRouteNumber()   const { return routeNumber;   }
-string         Route::getStartStop()     const { return startStop;     }
-string         Route::getEndStop()       const { return endStop;       }
-double         Route::getTotalDistance() const { return totalDistance; }
-vector<string> Route::getStopList()      const { return stopList;      }
-
-// ── Setters ──────────────────────────────────────────────────────────────────
-void Route::setRouteNumber(const string& rn)        { routeNumber   = rn;  }
-void Route::setStartStop(const string& ss)          { startStop     = ss;  }
-void Route::setEndStop(const string& es)            { endStop       = es;  }
-void Route::setTotalDistance(double td)             { totalDistance = td;  }
-void Route::setStopList(const vector<string>& sl)   { stopList      = sl;  }
-
-
-// =============================================================================
-//  Schedule — Composition Class Implementation  (HAS-A Bus & Route)
-// =============================================================================
-
-/**
- * Default constructor.
- * id = 0, all strings = "".
- */
-Schedule::Schedule()
-    : id(0),
-      busId(""),
-      routeId(""),
-      departureTime(""),
-      arrivalTime(""),
-      days("") {}
-
-/**
- * Parameterised constructor — used by seedSampleData() and CSV loader.
- */
-Schedule::Schedule(int id, const string& busId, const string& routeId,
-                   const string& departureTime, const string& arrivalTime,
-                   const string& days)
-    : id(id),
-      busId(busId),
-      routeId(routeId),
-      departureTime(departureTime),
-      arrivalTime(arrivalTime),
-      days(days) {}
-
-// ── Info Display ──────────────────────────────────────────────────────────────
-/**
- * Prints a formatted information block for this schedule to stdout.
- * Non-virtual — Schedule is outside the TransportEntity polymorphic hierarchy.
- */
-void Schedule::getInfo() const {
-    cout << "========================================" << endl;
-    cout << "  SCHEDULE INFORMATION"                   << endl;
-    cout << "========================================" << endl;
-    cout << "  ID            : " << id            << endl;
-    cout << "  Bus ID        : " << busId         << endl;
-    cout << "  Route ID      : " << routeId       << endl;
-    cout << "  Departure     : " << departureTime << endl;
-    cout << "  Arrival       : " << arrivalTime   << endl;
-    cout << "  Days          : " << days          << endl;
-    cout << "========================================" << endl;
-}
-
-// ── CSV Serialisation ─────────────────────────────────────────────────────────
-/**
- * Serialises all Schedule fields as a single comma-separated line.
- * Matches header: id,busId,routeId,departureTime,arrivalTime,days
- */
-string Schedule::toCSV() const {
-    return to_string(id) + "," +
-           busId         + "," +
-           routeId       + "," +
-           departureTime + "," +
-           arrivalTime   + "," +
-           days;
-}
-
-// ── Getters ──────────────────────────────────────────────────────────────────
-int    Schedule::getId()            const { return id;            }
-string Schedule::getBusId()         const { return busId;         }
-string Schedule::getRouteId()       const { return routeId;       }
-string Schedule::getDepartureTime() const { return departureTime; }
-string Schedule::getArrivalTime()   const { return arrivalTime;   }
-string Schedule::getDays()          const { return days;          }
-
-// ── Setters ──────────────────────────────────────────────────────────────────
-void Schedule::setId(int newId)                   { id            = newId; }
-void Schedule::setBusId(const string& bid)        { busId         = bid;   }
-void Schedule::setRouteId(const string& rid)      { routeId       = rid;   }
-void Schedule::setDepartureTime(const string& dt) { departureTime = dt;    }
-void Schedule::setArrivalTime(const string& at)   { arrivalTime   = at;    }
-void Schedule::setDays(const string& d)           { days          = d;     }
+string Schedule::getDepartureTime() const { return departureTime; } // Get Dep time

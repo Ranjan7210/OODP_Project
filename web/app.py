@@ -755,4 +755,4 @@ def citizen_schedules():
 # Run
 # ============================================================
 if __name__ == '__main__':
-    app.run(debug=True, port=0) # Automatically find an available port preferred, but I'll use 5001 for consistency.
+    app.run(debug=True, port=5001)
